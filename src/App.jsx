@@ -4132,7 +4132,7 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
         <div className="grid md:grid-cols-3 gap-4">
           <SelectField label="Region" value={region} onChange={changeRegion} options={Object.keys(REGION_TOWNS)} testId="research-region" />
           <div className="md:col-span-2">
-            <ChipMultiSelect label={`Locations within ${region}`} options={REGION_TOWNS[region]} selected={towns} onToggle={(t) => toggleIn(towns, setTowns, t)} testIdPrefix="research-town" />
+            <ChipMultiSelect label={`Locations within ${region || "selected region"}`} options={REGION_TOWNS[region] || []} selected={towns} onToggle={(t) => toggleIn(towns, setTowns, t)} testIdPrefix="research-town" />
           </div>
         </div>
 
