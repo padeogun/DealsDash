@@ -1,0 +1,126 @@
+/* ============================================================
+   VIXIV Design System — design tokens  v1.0  (2026-09)
+   Single source of truth for colour, type, space, radius, motion.
+   Light is default; dark applies with [data-theme="dark"], or
+   with the OS setting when [data-theme="auto"].
+   ============================================================ */
+
+:root {
+  /* ---- Brand (constant across themes) ---- */
+  --vx-brand-navy:  #1B2A4A;
+  --vx-brand-brick: #C1533C;
+  --vx-brand-ice:   #E7ECF3;
+
+  /* ---- Type ---- */
+  --vx-font-head: Cambria, "Hoefler Text", Georgia, "Times New Roman", serif;
+  --vx-font-body: Calibri, "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --vx-font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --vx-text-xs: 12px;   /* captions, table meta */
+  --vx-text-sm: 13px;   /* notes, secondary */
+  --vx-text-md: 14px;   /* labels, table body */
+  --vx-text-base: 16px; /* body, item titles */
+  --vx-text-lg: 17px;   /* section heading (h3) */
+  --vx-text-xl: 20px;   /* page heading (h2) */
+  --vx-text-2xl: 24px;  /* report title, key stat */
+  --vx-text-3xl: 26px;  /* live number */
+  --vx-leading-tight: 1.1;
+  --vx-leading-body: 1.45;
+
+  /* ---- Space (4px base) ---- */
+  --vx-space-1: 4px;  --vx-space-2: 8px;  --vx-space-3: 12px;
+  --vx-space-4: 16px; --vx-space-5: 20px; --vx-space-6: 24px;
+  --vx-space-8: 32px; --vx-space-12: 48px;
+
+  /* ---- Shape ---- */
+  --vx-radius-sm: 4px;      /* inputs, buttons, stats */
+  --vx-radius-pill: 999px;  /* segmented choices */
+  --vx-rule-accent: 3px;    /* brick rule: selected tab, note edge, live bar */
+  --vx-content-max: 820px;
+  --vx-focus-width: 2px;
+
+  /* ---- Motion ---- */
+  --vx-duration: 120ms;
+  --vx-ease: ease-out;
+
+  /* ---- Semantic colour: LIGHT ---- */
+  --vx-bg:            #FFFFFF;
+  --vx-surface:       #E7ECF3;   /* ice panels, stats, notes */
+  --vx-surface-2:     #F5F7FA;   /* zebra rows, disabled */
+  --vx-header-bg:     #1B2A4A;
+  --vx-header-fg:     #FFFFFF;
+  --vx-header-muted:  rgba(255,255,255,.80);
+  --vx-header-rule:   rgba(255,255,255,.15);
+
+  --vx-text:          #1B2A4A;   /* 14.2:1 on bg */
+  --vx-text-muted:    #4A5670;   /* 7.4:1 on bg, 6.2:1 on surface */
+  --vx-text-inverse:  #FFFFFF;
+
+  --vx-accent:        #C1533C;   /* 4.6:1 on bg — AA for normal text */
+  --vx-accent-strong: #A6412E;   /* 6.2:1 — small accent text */
+  --vx-accent-fg:     #FFFFFF;
+
+  --vx-border:        #C7D0DE;
+  --vx-divider:       #DFE5EE;
+
+  --vx-positive:      #2E7D4F;   /* 5.1:1 */
+  --vx-caution:       #8A6508;   /* 5.3:1 (#B8860B fails AA for text) */
+  --vx-negative:      #C1533C;
+  --vx-info:          #1d4ed8;   /* 7.1:1 on bg */
+
+  --vx-surface-positive: #d1fae5;
+  --vx-surface-caution:  #fef3c7;
+  --vx-surface-negative: #fee2e2;
+  --vx-surface-info:     #eff6ff;
+
+  --vx-shadow-bar:    0 -2px 8px rgba(27,42,74,.08);
+  --vx-shadow-pop:    0 4px 16px rgba(27,42,74,.14);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --vx-bg:            #0F1728;
+  --vx-surface:       #1B2A4A;   /* navy becomes the panel */
+  --vx-surface-2:     #16223A;
+  --vx-header-bg:     #0A1120;
+  --vx-header-fg:     #E7ECF3;
+  --vx-header-muted:  rgba(231,236,243,.75);
+  --vx-header-rule:   rgba(231,236,243,.12);
+  --vx-text:          #E7ECF3;   /* 15.1:1 on bg, 12:1 on surface */
+  --vx-text-muted:    #A8B3C7;   /* 8.5:1 on bg, 6.7:1 on surface */
+  --vx-text-inverse:  #0F1728;
+  --vx-accent:        #E07A63;   /* 6.1:1 on bg, 4.8:1 on surface */
+  --vx-accent-strong: #F08F7A;
+  --vx-accent-fg:     #0F1728;
+  --vx-border:        #3A4A6B;
+  --vx-divider:       #2C3B5C;
+  --vx-positive:      #5BBF85;   /* 7.9:1 */
+  --vx-caution:       #E0B23A;   /* 9.0:1 */
+  --vx-negative:      #E07A63;
+  --vx-info:          #60a5fa;
+
+  --vx-surface-positive: #0f2e1a;
+  --vx-surface-caution:  #221904;
+  --vx-surface-negative: #2d1212;
+  --vx-surface-info:     #0f1e35;
+
+  --vx-shadow-bar:    0 -2px 8px rgba(0,0,0,.45);
+  --vx-shadow-pop:    0 4px 16px rgba(0,0,0,.55);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --vx-bg: #0F1728; --vx-surface: #1B2A4A; --vx-surface-2: #16223A;
+    --vx-header-bg: #0A1120; --vx-header-fg: #E7ECF3;
+    --vx-header-muted: rgba(231,236,243,.75); --vx-header-rule: rgba(231,236,243,.12);
+    --vx-text: #E7ECF3; --vx-text-muted: #A8B3C7; --vx-text-inverse: #0F1728;
+    --vx-accent: #E07A63; --vx-accent-strong: #F08F7A; --vx-accent-fg: #0F1728;
+    --vx-border: #3A4A6B; --vx-divider: #2C3B5C;
+    --vx-positive: #5BBF85; --vx-caution: #E0B23A; --vx-negative: #E07A63;
+    --vx-shadow-bar: 0 -2px 8px rgba(0,0,0,.45); --vx-shadow-pop: 0 4px 16px rgba(0,0,0,.55);
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) { :root { --vx-duration: 0ms; } }

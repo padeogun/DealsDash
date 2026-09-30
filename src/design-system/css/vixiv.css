@@ -1,0 +1,142 @@
+/* ============================================================
+   VIXIV Design System — component styles  v1.0
+   Requires tokens/tokens.css. Framework-agnostic: works with
+   plain HTML, React (see /react) or alongside Tailwind.
+   Class prefix: vx-
+   ============================================================ */
+
+/* ---------- Base ---------- */
+.vx-root, .vx-root body {
+  font-family: var(--vx-font-body);
+  font-size: var(--vx-text-base);
+  line-height: var(--vx-leading-body);
+  color: var(--vx-text);
+  background: var(--vx-bg);
+  -webkit-font-smoothing: antialiased;
+}
+.vx-h1, .vx-h2, .vx-h3, .vx-display { font-family: var(--vx-font-head); font-weight: 400; margin: 0; line-height: var(--vx-leading-tight); }
+.vx-h1 { font-size: var(--vx-text-2xl); }
+.vx-h2 { font-size: var(--vx-text-xl); margin: var(--vx-space-1) 0 var(--vx-space-3); }
+.vx-h3 { font-size: var(--vx-text-lg); color: var(--vx-accent); margin: var(--vx-space-4) 0 var(--vx-space-2); }
+.vx-display { font-size: var(--vx-text-3xl); }
+.vx-muted { color: var(--vx-text-muted); }
+.vx-small { font-size: var(--vx-text-md); }
+.vx-caption { font-size: var(--vx-text-xs); color: var(--vx-text-muted); }
+.vx-positive { color: var(--vx-positive); }
+.vx-caution  { color: var(--vx-caution); }
+.vx-negative { color: var(--vx-negative); }
+
+/* ---------- Layout ---------- */
+.vx-page { max-width: var(--vx-content-max); margin: 0 auto; padding: var(--vx-space-4); }
+.vx-page--with-bar { padding-bottom: 96px; }
+.vx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 var(--vx-space-3); }
+.vx-grid--2 { grid-template-columns: 1fr 1fr; gap: var(--vx-space-3); }
+.vx-row { display: flex; align-items: center; gap: var(--vx-space-2); }
+.vx-row--between { justify-content: space-between; }
+
+/* ---------- Header & tabs ---------- */
+.vx-header { background: var(--vx-header-bg); color: var(--vx-header-fg); padding: 14px var(--vx-space-4) 0; }
+.vx-header__title { font-family: var(--vx-font-head); font-size: 22px; line-height: 1.1; }
+.vx-header__sub { font-size: var(--vx-text-sm); color: var(--vx-header-muted); }
+.vx-tabs { display: flex; overflow-x: auto; margin-top: var(--vx-space-2); border-top: 1px solid var(--vx-header-rule); scrollbar-width: none; }
+.vx-tab {
+  padding: 10px var(--vx-space-3); border: 0; background: none; font: inherit; font-size: 15px;
+  color: var(--vx-header-fg); border-bottom: var(--vx-rule-accent) solid transparent; white-space: nowrap; cursor: pointer;
+  transition: border-color var(--vx-duration) var(--vx-ease);
+}
+.vx-tab[aria-selected="true"] { border-bottom-color: var(--vx-brand-brick); font-weight: 700; }
+.vx-tab:focus-visible { outline: var(--vx-focus-width) solid var(--vx-brand-brick); outline-offset: -2px; }
+/* Sidebar variant (DealsDash desktop) */
+.vx-sidenav { display: flex; flex-direction: column; background: var(--vx-header-bg); min-height: 100%; }
+.vx-sidenav .vx-tab { text-align: left; border-bottom: 0; border-left: 4px solid transparent; padding: var(--vx-space-3) var(--vx-space-4); }
+.vx-sidenav .vx-tab[aria-selected="true"] { border-left-color: var(--vx-brand-brick); background: rgba(255,255,255,.06); }
+
+/* ---------- Form controls ---------- */
+.vx-field { display: block; margin-bottom: 10px; }
+.vx-field__label { font-size: var(--vx-text-md); margin-bottom: var(--vx-space-1); display: block; }
+.vx-input, .vx-select, .vx-textarea {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--vx-border); border-radius: var(--vx-radius-sm);
+  padding: 8px 10px; font: inherit; color: var(--vx-text); background: var(--vx-bg);
+}
+.vx-input--right { text-align: right; }
+.vx-input:focus, .vx-select:focus, .vx-textarea:focus { outline: var(--vx-focus-width) solid var(--vx-accent); outline-offset: 1px; }
+.vx-input:disabled { background: var(--vx-surface-2); color: var(--vx-text-muted); }
+.vx-input[aria-invalid="true"] { border-color: var(--vx-negative); }
+.vx-field__error { font-size: var(--vx-text-sm); color: var(--vx-negative); margin-top: var(--vx-space-1); }
+
+/* Segmented choice (single-select pills) */
+.vx-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.vx-seg__opt {
+  border: 1px solid var(--vx-border); background: var(--vx-bg); color: var(--vx-text);
+  border-radius: var(--vx-radius-pill); padding: 6px var(--vx-space-3); font: inherit; font-size: var(--vx-text-md); cursor: pointer;
+  transition: background var(--vx-duration) var(--vx-ease), color var(--vx-duration) var(--vx-ease);
+}
+.vx-seg__opt[aria-pressed="true"] { background: var(--vx-brand-navy); color: #fff; border-color: var(--vx-brand-navy); }
+[data-theme="dark"] .vx-seg__opt[aria-pressed="true"] { background: var(--vx-accent); color: var(--vx-accent-fg); border-color: var(--vx-accent); }
+.vx-seg__opt:focus-visible { outline: var(--vx-focus-width) solid var(--vx-accent); outline-offset: 2px; }
+
+/* ---------- Buttons ---------- */
+.vx-btn {
+  border: 1px solid var(--vx-brand-navy); background: var(--vx-brand-navy); color: #fff;
+  border-radius: var(--vx-radius-sm); padding: 9px 14px; font: inherit; cursor: pointer; min-height: 40px;
+}
+.vx-btn--ghost { background: var(--vx-bg); color: var(--vx-text); border-color: var(--vx-text); }
+.vx-btn--accent { background: var(--vx-accent); border-color: var(--vx-accent); color: var(--vx-accent-fg); }
+.vx-btn--sm { padding: 6px 10px; min-height: 32px; font-size: var(--vx-text-md); }
+.vx-btn:disabled { opacity: .5; cursor: not-allowed; }
+.vx-btn:focus-visible { outline: var(--vx-focus-width) solid var(--vx-accent); outline-offset: 2px; }
+[data-theme="dark"] .vx-btn { background: var(--vx-text); border-color: var(--vx-text); color: var(--vx-text-inverse); }
+[data-theme="dark"] .vx-btn--ghost { background: transparent; color: var(--vx-text); border-color: var(--vx-border); }
+[data-theme="dark"] .vx-btn--accent { background: var(--vx-accent); border-color: var(--vx-accent); color: var(--vx-accent-fg); }
+
+/* ---------- Lists & items ---------- */
+.vx-item { border-top: 1px solid var(--vx-divider); padding: 14px 0; }
+.vx-item__title { font-weight: 700; font-size: var(--vx-text-base); }
+.vx-item__guide { color: var(--vx-text-muted); font-size: var(--vx-text-md); line-height: var(--vx-leading-body); margin: var(--vx-space-1) 0 var(--vx-space-2); }
+.vx-item__value { font-weight: 700; white-space: nowrap; }
+
+/* ---------- Note (regulatory / assumption callout) ---------- */
+.vx-note {
+  background: var(--vx-surface); border-left: var(--vx-rule-accent) solid var(--vx-brand-brick);
+  padding: 6px 10px; font-size: var(--vx-text-sm); line-height: 1.4; margin-top: var(--vx-space-2);
+}
+.vx-note--positive { border-left-color: var(--vx-positive); }
+.vx-note--caution  { border-left-color: var(--vx-caution); }
+
+/* ---------- Stat tile ---------- */
+.vx-stat { background: var(--vx-surface); padding: 10px 12px; border-radius: var(--vx-radius-sm); }
+.vx-stat__label { font-size: var(--vx-text-sm); color: var(--vx-text-muted); }
+.vx-stat__value { font-family: var(--vx-font-head); font-size: 18px; line-height: 1.15; }
+.vx-stat--big .vx-stat__value { font-size: var(--vx-text-2xl); }
+
+/* ---------- Table ---------- */
+.vx-table { width: 100%; border-collapse: collapse; font-size: var(--vx-text-md); }
+.vx-table th, .vx-table td { padding: 6px 4px; border-bottom: 1px solid var(--vx-divider); text-align: left; vertical-align: top; }
+.vx-table th { font-weight: 700; }
+.vx-table .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vx-table tr.total { font-weight: 700; }
+.vx-table--zebra tbody tr:nth-child(even) { background: var(--vx-surface-2); }
+
+/* ---------- Live bar (the signature pattern) ---------- */
+.vx-livebar {
+  position: fixed; left: 0; right: 0; bottom: 0; background: var(--vx-bg);
+  border-top: var(--vx-rule-accent) solid var(--vx-brand-brick); padding: 10px var(--vx-space-4);
+  display: flex; justify-content: space-between; align-items: center; box-shadow: var(--vx-shadow-bar);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+.vx-livebar__number { font-family: var(--vx-font-head); font-size: var(--vx-text-3xl); line-height: 1; }
+
+/* ---------- Report header rule ---------- */
+.vx-report-head { border-bottom: var(--vx-rule-accent) solid var(--vx-brand-brick); padding-bottom: var(--vx-space-2); margin-bottom: var(--vx-space-3); }
+
+/* ---------- Status / feedback ---------- */
+.vx-status { font-size: var(--vx-text-sm); color: var(--vx-accent-strong); margin-bottom: var(--vx-space-2); }
+.vx-empty { font-size: var(--vx-text-md); color: var(--vx-text-muted); }
+
+/* ---------- Print ---------- */
+@media print {
+  .vx-no-print, .vx-livebar, .vx-header, .vx-sidenav { display: none !important; }
+  .vx-root, body { background: #fff !important; color: #1B2A4A !important; }
+  .vx-page { max-width: none; padding: 0; }
+  .vx-stat, .vx-note { background: #E7ECF3 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

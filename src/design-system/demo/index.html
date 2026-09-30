@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VIXIV Design System — component sheet</title>
+<link rel="stylesheet" href="../tokens/tokens.css" /><link rel="stylesheet" href="../css/vixiv.css" />
+<style>body{margin:0}</style>
+</head>
+<body class="vx-root">
+<header class="vx-header">
+  <div class="vx-row vx-row--between" style="align-items:baseline">
+    <div><div class="vx-header__title">VIXIV Design System</div><div class="vx-header__sub">Component sheet · v1.0</div></div>
+    <div class="vx-row"><button class="vx-btn vx-btn--ghost vx-btn--sm" onclick="setTheme('light')">Light</button><button class="vx-btn vx-btn--ghost vx-btn--sm" onclick="setTheme('dark')">Dark</button></div>
+  </div>
+  <nav class="vx-tabs" role="tablist">
+    <button class="vx-tab" role="tab" aria-selected="true">Overview</button><button class="vx-tab" role="tab">Walkthrough</button><button class="vx-tab" role="tab">Finance</button><button class="vx-tab" role="tab">Report</button>
+  </nav>
+</header>
+<main class="vx-page vx-page--with-bar">
+  <h2 class="vx-h2">Type</h2>
+  <div class="vx-h1">Report title — Cambria 24</div>
+  <h3 class="vx-h3">Section heading — Cambria 17, accent</h3>
+  <p>Body — Calibri 16 / 1.45. Property appraisal copy sits at this size and never exceeds 80 characters a line.</p>
+  <p class="vx-muted vx-small">Guidance — 14, muted. Slipped/missing tiles, sagging ridge, moss, daylight visible from loft.</p>
+  <p class="vx-caption">Caption — 12, muted. Used for table meta and the live bar labels.</p>
+
+  <h2 class="vx-h2">Colour</h2>
+  <div class="vx-grid vx-grid--2" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">
+    <div class="vx-stat" style="background:var(--vx-brand-navy);color:#fff"><div class="vx-stat__label" style="color:rgba(255,255,255,.8)">Navy</div><div class="vx-stat__value">#1B2A4A</div></div>
+    <div class="vx-stat" style="background:var(--vx-brand-brick);color:#fff"><div class="vx-stat__label" style="color:rgba(255,255,255,.85)">Brick</div><div class="vx-stat__value">#C1533C</div></div>
+    <div class="vx-stat" style="background:var(--vx-brand-ice);color:#1B2A4A"><div class="vx-stat__label" style="color:#4A5670">Ice</div><div class="vx-stat__value">#E7ECF3</div></div>
+    <div class="vx-stat"><div class="vx-stat__label">Positive</div><div class="vx-stat__value vx-positive">Proceed</div></div>
+    <div class="vx-stat"><div class="vx-stat__label">Caution</div><div class="vx-stat__value vx-caution">Negotiate</div></div>
+    <div class="vx-stat"><div class="vx-stat__label">Negative</div><div class="vx-stat__value vx-negative">Walk away</div></div>
+  </div>
+
+  <h2 class="vx-h2">Stats</h2>
+  <div class="vx-grid vx-grid--2">
+    <div class="vx-stat vx-stat--big"><div class="vx-stat__label">Maximum bid</div><div class="vx-stat__value">£92,400</div></div>
+    <div class="vx-stat vx-stat--big"><div class="vx-stat__label">Decision</div><div class="vx-stat__value vx-positive">Proceed</div></div>
+    <div class="vx-stat"><div class="vx-stat__label">GDV</div><div class="vx-stat__value">£150,000</div></div>
+    <div class="vx-stat"><div class="vx-stat__label">Refurbishment</div><div class="vx-stat__value">£28,650</div></div>
+  </div>
+
+  <h2 class="vx-h2">Forms</h2>
+  <div class="vx-grid">
+    <label class="vx-field"><span class="vx-field__label">Floor area (m²)</span><input class="vx-input" type="number" value="80"></label>
+    <label class="vx-field"><span class="vx-field__label">Bedrooms</span><input class="vx-input" type="number" value="2"></label>
+    <label class="vx-field"><span class="vx-field__label">GDV £</span><input class="vx-input vx-input--right" type="number" value="150000" aria-invalid="true"><span class="vx-field__error">Enter a figure evidenced by comparables</span></label>
+  </div>
+  <label class="vx-field"><span class="vx-field__label">Strategy</span>
+    <div class="vx-seg" role="group"><button class="vx-seg__opt" aria-pressed="true">Flip (resell)</button><button class="vx-seg__opt" aria-pressed="false">BRRR (refinance &amp; let)</button></div>
+  </label>
+  <div class="vx-row"><button class="vx-btn">Save survey</button><button class="vx-btn vx-btn--ghost">Export JSON</button><button class="vx-btn vx-btn--accent">Promote to deal</button><button class="vx-btn" disabled>Disabled</button></div>
+
+  <h2 class="vx-h2">Item + note</h2>
+  <div class="vx-item">
+    <div class="vx-row vx-row--between"><div class="vx-item__title">Electrical installation</div><div class="vx-item__value">£4,100</div></div>
+    <div class="vx-item__guide">Consumer unit type, RCD protection, cable types, socket count, date of last EICR.</div>
+    <div class="vx-seg"><button class="vx-seg__opt" aria-pressed="false">No work required</button><button class="vx-seg__opt" aria-pressed="false">EICR only</button><button class="vx-seg__opt" aria-pressed="true">Full rewire</button></div>
+    <div class="vx-note">Rental: EICR every 5 years, satisfactory, given to tenants and council on request.</div>
+    <div class="vx-note vx-note--caution">Assumption: benchmark rate, unvalidated — override with a quote.</div>
+  </div>
+
+  <h2 class="vx-h2">Table</h2>
+  <table class="vx-table"><thead><tr><th>Item</th><th>Work</th><th class="n">Cost</th></tr></thead><tbody>
+    <tr><td>Roof covering<div class="vx-caption">Roof &amp; chimneys</div></td><td>Full re-cover</td><td class="n">£5,664</td></tr>
+    <tr><td>Kitchen</td><td>Replace</td><td class="n">£6,900</td></tr>
+    <tr class="total"><td colspan="2">Refurbishment total</td><td class="n">£28,650</td></tr>
+  </tbody></table>
+</main>
+<div class="vx-livebar"><div class="vx-caption">Refurb £28,650 + 15%<br>vs guide £95,000</div><div style="text-align:right"><div class="vx-caption">Maximum bid</div><div class="vx-livebar__number vx-negative">£92,400</div></div></div>
+<script>function setTheme(t){document.documentElement.setAttribute('data-theme',t)}</script>
+</body></html>

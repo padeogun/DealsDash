@@ -1,0 +1,24 @@
+@import "./design-system/tokens/tokens.css";
+@import "./design-system/css/vixiv.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Decision Brief print styles ──────────────────────────────────────────── */
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  /* Hide everything, then reveal only the brief root */
+  body * { visibility: hidden; }
+  #brief-print-root, #brief-print-root * { visibility: visible; }
+  #brief-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}

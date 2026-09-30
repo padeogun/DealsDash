@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BMV Appraisal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>:root{
+  --navy:#1B2A4A; --brick:#C1533C; --ice:#E7ECF3; --gold:#8A6508; --green:#2F6B4F;
+  --bg:#E7ECF3; --paper:#FFFFFF; --ink:#1B2A4A; --ink-2:#4A5874; --line:#C9D2DF; --line-2:#DDE3EC;
+  --field:#F7F9FC; --neg:#B0442E; --pos:#2F6B4F; --warn-bg:#F6EEDC;
+  --serif:"Source Serif 4",Cambria,Georgia,serif; --sans:"Source Sans 3",Calibri,"Segoe UI",system-ui,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111A2C; --paper:#18233A; --ink:#E7ECF3; --ink-2:#A9B6CC; --line:#2E3C58; --line-2:#24314B;
+  --field:#131D31; --neg:#E07A63; --pos:#7DC3A0; --gold:#D6A94A; --warn-bg:#2A2718; --brick:#E07A63; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111A2C; --paper:#18233A; --ink:#E7ECF3; --ink-2:#A9B6CC; --line:#2E3C58; --line-2:#24314B;
+  --field:#131D31; --neg:#E07A63; --pos:#7DC3A0; --gold:#D6A94A; --warn-bg:#2A2718; --brick:#E07A63; color-scheme:dark;}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--sans);font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;margin:0}
+h1{font-size:1.75rem;margin-bottom:.5rem} h2{font-size:1.2rem;margin:1.75rem 0 .75rem} h3{font-size:1rem;margin-bottom:.5rem}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brick);outline-offset:2px}
+.muted{color:var(--ink-2)} small{font-size:.8rem;color:var(--ink-2)}
+
+/* header */
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#E7ECF3;padding-top:env(safe-area-inset-top,0px)}
+.top-in{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:1rem;padding:.6rem 1rem;flex-wrap:wrap}
+.brand{font-family:var(--serif);font-size:1.15rem;font-weight:600;letter-spacing:.01em;margin-right:auto}
+.brand span{font-family:var(--sans);font-weight:400;opacity:.7;font-size:.85rem;margin-left:.5rem}
+#status{font-size:.8rem;opacity:.75}
+.tabs{display:flex;gap:.25rem;width:100%;overflow-x:auto}
+.tabs button{background:none;border:0;color:#C9D2DF;padding:.45rem .8rem;border-radius:4px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-current="page"]{background:rgba(231,236,243,.14);color:#fff}
+.tabs button:disabled{opacity:.4;cursor:default}
+@media(min-width:760px){.tabs{width:auto}}
+
+main{max-width:1080px;margin:0 auto;padding:1rem 1rem 10rem}
+.page{background:var(--paper);border:1px solid var(--line-2);border-radius:6px;padding:1.25rem}
+@media(min-width:760px){.page{padding:2rem 2.25rem}}
+.page-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.lede{color:var(--ink-2);max-width:68ch;margin:.25rem 0 1rem}
+.note{background:var(--warn-bg);border-left:3px solid var(--gold);padding:.6rem .8rem;margin:.75rem 0;font-size:.92rem;max-width:72ch}
+
+/* steps: a real sequence, so numbered */
+.steps{display:flex;gap:.25rem;overflow-x:auto;margin-bottom:.75rem;padding-bottom:.25rem}
+.step{flex:0 0 auto;display:flex;align-items:center;gap:.45rem;background:none;border:1px solid transparent;border-radius:4px;padding:.4rem .7rem;color:var(--ink-2);cursor:pointer;font-size:.92rem}
+.step span{display:inline-grid;place-items:center;width:1.4rem;height:1.4rem;border-radius:50%;border:1px solid var(--line);font-size:.75rem}
+.step[aria-current="step"]{color:var(--ink);background:var(--paper);border-color:var(--line-2);font-weight:600}
+.step[aria-current="step"] span{background:var(--navy);color:#fff;border-color:var(--navy)}
+.step-foot{display:flex;justify-content:space-between;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--line-2);flex-wrap:wrap}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--paper);padding:.5rem .9rem;border-radius:4px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+:root[data-theme="dark"] .btn.primary{background:#E7ECF3;color:#1B2A4A;border-color:#E7ECF3}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.primary{background:#E7ECF3;color:#1B2A4A;border-color:#E7ECF3}}
+.icon-btn{border:0;background:none;color:var(--ink-2);cursor:pointer;font-size:.82rem;padding:.3rem .4rem;text-decoration:underline;text-underline-offset:2px}
+.icon-btn:hover{color:var(--neg)}
+.add-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.75rem 0}
+.add-row select{max-width:100%;min-width:0;flex:1 1 16rem}
+
+/* fields */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.9rem 1rem}
+.fld{display:flex;flex-direction:column;gap:.25rem;font-size:.88rem}
+.fld>span{color:var(--ink-2)}
+.fld.wide{grid-column:1/-1}
+input,select,textarea{width:100%;min-width:0;background:var(--field);border:1px solid var(--line);border-radius:4px;padding:.45rem .55rem}
+textarea{resize:vertical}
+input[type=checkbox]{width:1.1rem;height:1.1rem;accent-color:var(--navy);flex:none}
+.inp{display:flex;align-items:stretch;background:var(--field);border:1px solid var(--line);border-radius:4px}
+.inp input{border:0;background:none}
+.inp i{font-style:normal;color:var(--ink-2);padding:.45rem .5rem;font-size:.85rem;display:flex;align-items:center}
+.inp:focus-within{outline:2px solid var(--brick);outline-offset:1px}
+.inp input:focus-visible{outline:none}
+
+/* tables */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid var(--line-2);vertical-align:top}
+.tbl thead th{font-weight:600;color:var(--ink-2);font-size:.82rem;border-bottom:1px solid var(--line)}
+.tbl td input,.tbl td select{padding:.35rem .4rem}
+.comps{min-width:720px} .rates{min-width:820px} .rates .sm{width:5.5rem}
+.kv th{font-weight:400;color:var(--ink-2);width:52%}
+.kv td{text-align:right;font-weight:500}
+.kv td small{display:block;font-weight:400}
+.kv tr.sum th,.kv tr.sum td{border-top:1px solid var(--ink-2);font-weight:600;color:var(--ink)}
+.neg,.kv tr.neg td,.sens td.neg{color:var(--neg)}
+.sens{min-width:560px} .sens td,.sens thead th:not(:first-child){text-align:right}
+
+/* figures */
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--line-2);border:1px solid var(--line-2);margin:1.25rem 0}
+.fig{background:var(--paper);padding:.8rem 1rem;display:flex;flex-direction:column;gap:.15rem}
+.fig span{font-size:.85rem;color:var(--ink-2)} .fig b{font-family:var(--serif);font-size:1.35rem;font-weight:600}
+.fig.pos b{color:var(--pos)} .fig.neg b{color:var(--neg)} .fig.quiet b{color:var(--ink-2);font-size:1.1rem}
+
+/* condition */
+.grade{border-left:4px solid var(--navy);padding:.7rem 1rem;background:var(--field);display:flex;flex-direction:column;gap:.15rem;margin:.5rem 0 1rem}
+.grade b{font-family:var(--serif);font-size:1.25rem}
+.g-medium{border-color:var(--gold)} .g-heavy{border-color:var(--brick)}
+.cond{display:flex;flex-direction:column}
+.cond-row{display:grid;grid-template-columns:1fr auto;gap:.4rem .75rem;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--line-2)}
+.cond-note{grid-column:1/-1}
+@media(min-width:760px){.cond-row{grid-template-columns:minmax(12rem,1.1fr) auto 1.4fr}.cond-note{grid-column:auto}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;background:var(--paper);padding:.35rem .7rem;cursor:pointer;font-size:.85rem;border-right:1px solid var(--line);color:var(--ink-2)}
+.seg button:last-child{border-right:0}
+.seg .cr1[aria-checked="true"],.seg .fs-clear[aria-checked="true"]{background:var(--pos);color:#fff}
+.seg .cr2[aria-checked="true"],.seg .fs-suspected[aria-checked="true"]{background:var(--gold);color:#fff}
+.seg .cr3[aria-checked="true"],.seg .fs-confirmed[aria-checked="true"]{background:var(--brick);color:#fff}
+
+/* works */
+.ai-box{border:1px solid var(--line);border-radius:6px;padding:1rem;display:flex;flex-wrap:wrap;gap:.75rem 1.5rem;align-items:center;justify-content:space-between;margin:.5rem 0 1rem;background:var(--field)}
+.ai-box>div{flex:1 1 22rem} .ai-box p{margin:.25rem 0 0;color:var(--ink-2);font-size:.92rem;max-width:62ch}
+.ai-msg,.ai-sum{flex-basis:100%;margin:0;font-size:.92rem}
+.ai-sum{border-top:1px solid var(--line-2);padding-top:.6rem;font-style:italic}
+.wks{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.25rem}
+.wk{border:1px solid var(--line-2);border-radius:6px;padding:.6rem .75rem}
+.wk.off{opacity:.55}
+.wk-top{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+@media(max-width:759px){.wk-item{flex:1 1 calc(100% - 2rem)}.wk-cost{margin-left:1.6rem;margin-right:auto}}
+.wk-more{margin-top:.4rem;font-size:.85rem}.wk-more summary{cursor:pointer;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-item{flex:1;font-weight:600;background:transparent;border-color:transparent}
+.wk-item:hover,.wk-item:focus{border-color:var(--line);background:var(--field)}
+.wk-cost{white-space:nowrap;font-size:.92rem}
+.wk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem .6rem;margin-top:.5rem}
+.wk-grid label{display:flex;flex-direction:column;gap:.15rem;font-size:.78rem;color:var(--ink-2)}
+.wk-grid input,.wk-grid select{font-size:.88rem;padding:.3rem .4rem;color:var(--ink)}
+.wk-grid .w2,.wk-grid .w4{grid-column:1/-1}
+@media(min-width:760px){.wk-grid{grid-template-columns:repeat(8,1fr)}.wk-grid .w2{grid-column:span 4}.wk-grid .w4{grid-column:1/-1}}
+.ai-tag{display:block;margin-top:.4rem;color:var(--gold)}
+.tots{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1.25rem}
+.tot{border-top:3px solid var(--navy);padding-top:.6rem}
+.tot dl{display:grid;grid-template-columns:1fr auto;gap:.3rem 1rem;margin:.25rem 0 .4rem}
+.tot dt{color:var(--ink-2)} .tot dd{margin:0;text-align:right}
+.tot .sum{font-weight:600;color:var(--ink);border-top:1px solid var(--line);padding-top:.3rem}
+
+/* appraisal */
+.duo{display:grid;grid-template-columns:1fr;gap:1.5rem;margin-top:1rem}
+@media(min-width:860px){.duo{grid-template-columns:1fr 1fr}}
+.col{border-top:3px solid var(--line)}
+.col.ok{border-color:var(--pos)} .col.bad{border-color:var(--brick)}
+.col h2{margin-top:.75rem}
+.mao{margin-top:.75rem;padding:.7rem .9rem;border:1px solid var(--gold);border-radius:4px;display:flex;flex-direction:column;gap:.1rem}
+.mao span{font-size:.85rem;color:var(--ink-2)} .mao b{font-family:var(--serif);font-size:1.3rem;color:var(--gold)}
+
+/* verdict */
+.verdict{display:grid;grid-template-columns:1fr;gap:.75rem 1.5rem;padding:1rem 1.2rem;border-radius:6px;border:1px solid var(--line);margin:.5rem 0}
+@media(min-width:700px){.verdict{grid-template-columns:auto 1fr}}
+.v-word{font-family:var(--serif);font-weight:700;font-size:2rem;line-height:1}
+.verdict p{margin:0 0 .4rem} .verdict ul{margin:.25rem 0 0;padding-left:1.1rem}
+.verdict.go{border-color:var(--pos)} .verdict.go .v-word{color:var(--pos)}
+.verdict.cond{border-color:var(--gold)} .verdict.cond .v-word{color:var(--gold)}
+.verdict.nogo{border-color:var(--brick)} .verdict.nogo .v-word{color:var(--brick)}
+.flags{display:flex;flex-direction:column}
+.flag{padding:.7rem 0;border-bottom:1px solid var(--line-2);display:flex;flex-direction:column;gap:.45rem}
+.flag-h{display:flex;flex-wrap:wrap;gap:.3rem .6rem;align-items:baseline}
+.crit{font-size:.75rem;color:var(--brick);border:1px solid currentColor;border-radius:3px;padding:0 .3rem}
+.flag-f{display:flex;flex-wrap:wrap;gap:.5rem}
+.flag-f label{display:flex;flex-direction:column;font-size:.8rem;color:var(--ink-2);gap:.15rem;width:9rem}
+.flag-f .grow{flex:1 1 14rem}
+.flag-f input{color:var(--ink)}
+
+/* deals */
+.deal-list{list-style:none;margin:0;padding:0}
+.deal-row{display:flex;align-items:center;gap:.75rem;border-bottom:1px solid var(--line-2);padding:.4rem 0}
+.deal-open{flex:1;text-align:left;border:0;background:none;padding:.5rem .25rem;cursor:pointer;display:flex;flex-direction:column;gap:.05rem;min-width:0}
+.deal-open b{font-family:var(--serif);font-size:1.1rem} .deal-open span{font-size:.88rem}
+.deal-open:hover b{text-decoration:underline}
+.pill{font-size:.75rem;font-weight:600;padding:.15rem .5rem;border-radius:3px;white-space:nowrap;border:1px solid currentColor}
+.pill.go{color:var(--pos)} .pill.cond{color:var(--gold)} .pill.nogo{color:var(--brick)} .pill.inc{color:var(--ink-2)}
+.empty{text-align:left;padding:2rem 0;max-width:52ch} .empty p{color:var(--ink-2)}
+.empty.small{padding:.5rem 0}
+
+/* settings */
+.vers{display:flex;flex-direction:column;gap:.1rem}
+.ver{display:flex;gap:.7rem;align-items:flex-start;padding:.55rem 0;border-bottom:1px solid var(--line-2);cursor:pointer}
+.ver b{font-weight:500;display:block} .ver input{margin-top:.2rem}
+
+/* report */
+.md{white-space:pre-wrap;background:var(--field);border:1px solid var(--line-2);border-radius:4px;padding:1rem;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;max-height:70vh}
+
+/* ledger: the running deal position */
+#ledger{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--navy);color:#E7ECF3;
+  padding:.6rem 1rem calc(.6rem + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr auto;gap:.35rem 1rem;align-items:center;
+  box-shadow:0 -1px 0 rgba(0,0,0,.2)}
+#ledger[hidden]{display:none}
+.lg-name{font-family:var(--serif);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-name span{display:block;font-family:var(--sans);font-weight:400;font-size:.78rem;opacity:.7;text-transform:capitalize}
+.lg-cell{display:none;flex-direction:column;font-size:.78rem}
+.lg-cell span{opacity:.7} .lg-cell b{font-size:.98rem;font-weight:600;white-space:nowrap}
+.lg-cell b small{font-weight:400;opacity:.75;font-size:.78rem;color:inherit}
+.lg-cell b.neg{color:#F0A08D}
+.lg-verdict{font-weight:700;font-size:.85rem;padding:.35rem .6rem;border-radius:3px;white-space:nowrap;border:1px solid rgba(231,236,243,.4)}
+.lg-verdict.go{background:#2F6B4F;border-color:#2F6B4F} .lg-verdict.cond{background:#8A6508;border-color:#8A6508} .lg-verdict.nogo{background:#C1533C;border-color:#C1533C}
+@media(min-width:760px){#ledger{grid-template-columns:minmax(0,1.3fr) repeat(3,auto) auto;padding-left:max(1rem,calc(50vw - 540px + 1rem));padding-right:max(1rem,calc(50vw - 540px + 1rem))}.lg-cell{display:flex}}
+@media(max-width:759px){#ledger .lg-verdict{grid-row:1;grid-column:2}#ledger .lg-cell:nth-of-type(3){display:flex;grid-column:1/-1;flex-direction:row;gap:.5rem;align-items:baseline}}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(5rem + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:.55rem .9rem;border-radius:4px;z-index:40;font-size:.9rem;max-width:90vw}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand">BMV Appraisal<span>2 and 3-bed · England</span></div>
+  <span id="status" role="status">Loading…</span>
+  <nav class="tabs" aria-label="Main">
+    <button data-nav="deals">Assessments</button>
+    <button data-nav="assess">Current deal</button>
+    <button data-nav="rates">Rate library</button>
+    <button data-nav="settings">Settings</button>
+  </nav>
+</div></header>
+<main id="view"></main>
+<footer id="ledger" hidden aria-label="Deal position"></footer>
+<div id="toast" role="status" hidden></div>
+<script>/* Illustrative North West England rates. NOT validated. Replace with mentor or contractor rates. */
+const RATE_SRC = "Illustrative NW 2026, not validated";
+const SEED_RATES = [
+  ["rewire_2bed", "Full rewire, 2-bed house (incl. consumer unit, Part P cert)", "item", 3500, 5000, "Health & safety"],
+  ["rewire_3bed", "Full rewire, 3-bed house (incl. consumer unit, Part P cert)", "item", 4500, 6500, "Health & safety"],
+  ["consumer_unit", "Consumer unit replacement (18th Ed., Part P cert)", "item", 450, 700, "Health & safety"],
+  ["eicr", "EICR inspection and report", "item", 150, 250, "Professional & statutory"],
+  ["eicr_remedial", "EICR C1/C2 remedial works allowance", "item", 300, 900, "Health & safety"],
+  ["boiler_combi", "Combi boiler replacement (Gas Safe, notified)", "item", 2200, 3200, "Health & safety"],
+  ["ch_full_2bed", "Full central heating install, 2-bed", "item", 4500, 6500, "Health & safety"],
+  ["ch_full_3bed", "Full central heating install, 3-bed", "item", 5500, 7500, "Health & safety"],
+  ["radiator", "Radiator replacement", "each", 200, 350, "Health & safety"],
+  ["gas_safety", "Gas Safety Record (CP12)", "item", 60, 90, "Professional & statutory"],
+  ["alarm_mains", "Mains interlinked smoke / heat / CO alarm", "each", 80, 130, "Health & safety"],
+  ["fire_door", "FD30 fire door, supply and fit", "each", 350, 600, "Health & safety"],
+  ["extract_fan", "Extract fan, kitchen or bathroom", "each", 180, 300, "Energy performance"],
+  ["lead_pipe", "Lead water supply replacement", "item", 800, 1500, "Health & safety"],
+  ["kitchen_budget", "Kitchen, budget range, supply and fit", "item", 4000, 7000, "Internal fit-out"],
+  ["kitchen_mid", "Kitchen, mid range, supply and fit", "item", 7000, 11000, "Internal fit-out"],
+  ["bathroom", "Bathroom, standard suite, tiling, supply and fit", "item", 3500, 5500, "Internal fit-out"],
+  ["replaster_wall", "Hack off and replaster walls", "m²", 18, 28, "Internal fit-out"],
+  ["skim_ceiling", "Skim or overboard ceilings", "m²", 15, 22, "Internal fit-out"],
+  ["decorate", "Full redecoration (per m² floor area)", "m² GIA", 20, 35, "Internal fit-out"],
+  ["carpet", "Carpet and underlay, fitted", "m²", 20, 35, "Internal fit-out"],
+  ["lvt", "LVT flooring, fitted", "m²", 35, 55, "Internal fit-out"],
+  ["internal_door", "Internal door and ironmongery", "each", 150, 280, "Internal fit-out"],
+  ["balustrade", "Stair balustrade / handrail to Part K", "item", 400, 900, "Health & safety"],
+  ["upvc_window", "uPVC double-glazed window (FENSA)", "each", 450, 700, "Windows, doors & security"],
+  ["composite_door", "Composite external door (FENSA)", "each", 900, 1400, "Windows, doors & security"],
+  ["reroof_terrace", "Full re-roof, terraced house", "item", 6000, 9500, "Fabric & structure"],
+  ["roof_repair", "Roof repair, slipped slates / flashings", "item", 300, 800, "Fabric & structure"],
+  ["chimney_repair", "Chimney repoint / flashing repair", "item", 400, 1200, "Fabric & structure"],
+  ["guttering", "Gutters, fascias and soffits, uPVC", "lin m", 45, 70, "Fabric & structure"],
+  ["repoint", "Repointing brickwork", "m²", 40, 70, "Fabric & structure"],
+  ["dpc_injection", "Chemical DPC injection", "lin m", 70, 110, "Fabric & structure"],
+  ["lintel", "Replace lintel", "each", 400, 900, "Fabric & structure"],
+  ["joist_repair", "Floor joist repair / replacement allowance", "item", 800, 2500, "Fabric & structure"],
+  ["timber_treat", "Timber treatment (woodworm / rot)", "item", 400, 1200, "Fabric & structure"],
+  ["loft_insulation", "Loft insulation to 270mm", "m²", 12, 20, "Energy performance"],
+  ["cavity_insulation", "Cavity wall insulation", "item", 800, 1500, "Energy performance"],
+  ["iwi", "Internal wall insulation", "m² wall", 90, 140, "Energy performance"],
+  ["clearance", "Internal clearance and strip-out", "item", 400, 1000, "Externals"],
+  ["garden", "Garden clearance and tidy", "item", 300, 900, "Externals"],
+  ["skip", "Skip hire", "each", 280, 380, "Externals"],
+  ["damp_survey", "Independent damp and timber survey", "item", 250, 450, "Professional & statutory"],
+  ["asbestos_survey", "Asbestos refurbishment survey", "item", 250, 450, "Professional & statutory"],
+  ["struct_engineer", "Structural engineer inspection / calcs", "item", 450, 900, "Professional & statutory"],
+  ["building_control", "Building Control fees", "item", 400, 900, "Professional & statutory"],
+  ["drain_survey", "CCTV drain survey", "item", 150, 300, "Professional & statutory"],
+  ["epc", "New EPC", "item", 60, 100, "Professional & statutory"],
+  ["knotweed_plan", "Knotweed management plan (insurance-backed)", "item", 2500, 5000, "Externals"]
+].map(([key, item, unit, min, max, cat]) => ({ key, item, unit, min, max, cat, source: RATE_SRC, date: "2026-09" }));
+
+/* ===== BMV engine: pure functions, no DOM ===== */
+const ENGINE_VERSION = "1.0";
+
+const DEFAULT_CFG = {
+  asAt: "2026-09-28",
+  purchaser: "company",            // company | additional | single
+  costBasis: "mid",                // min | mid | max
+  regionalFactor: 1.0,
+  contingency: { light: 0.10, medium: 0.15, heavy: 0.20 },
+  programmeWeeks: { light: 4, medium: 10, heavy: 18 },
+  targets: { flipProfitOnGdv: 0.20, flipProfitOnCost: 0.25, brrrMaxLeftIn: 0, brrrMinCashflow: 200, brrrMinYield: 0.07 },
+  acq: { legal: 1500, survey: 500 },
+  bridge: { monthlyRate: 0.0085, arrFee: 0.02, exitFee: 0.0, ltv: 0.70, worksFunded: 0.0, brokerFee: 0.005, valuation: 450, legal: 1500 },
+  refi: { ltv: 0.75, haircut: 0.05, payRate: 0.055, stressRate: 0.055, icr: 1.25, minOwnMonths: 6, productFee: 0.02, valuation: 450, legal: 1200, processMonths: 1 },
+  letting: { voids: 0.08, mgmt: 0.12, maint: 0.08, insuranceAnnual: 350, monthsToLet: 1 },
+  sale: { agentPct: 0.012, conveyancing: 1200, monthsToSell: 4 },
+  holding: { councilTaxMonthly: 130, insuranceMonthly: 45, utilitiesMonthly: 80 }
+};
+
+/* Condition elements: cat drives grade derivation */
+const ELEMENTS = [
+  ["roof", "Roof covering", "structural", "External"],
+  ["chimney", "Chimneys & flashings", "structural", "External"],
+  ["walls_ext", "External walls & pointing", "structural", "External"],
+  ["lintels", "Lintels & structure", "structural", "External"],
+  ["rwg", "Rainwater goods", "fabric", "External"],
+  ["dpc", "DPC & ground levels", "fabric", "External"],
+  ["windows", "Windows", "fabric", "External"],
+  ["doors_ext", "External doors", "fabric", "External"],
+  ["boundaries", "Boundaries & drainage", "fabric", "External"],
+  ["ceilings", "Ceilings", "fabric", "Internal"],
+  ["plaster", "Walls & plaster", "fabric", "Internal"],
+  ["floors", "Floors & joists", "structural", "Internal"],
+  ["stairs", "Stairs & guarding", "safety", "Internal"],
+  ["damp", "Damp (rising, penetrating, condensation)", "structural", "Internal"],
+  ["timber", "Timber decay & woodworm", "structural", "Internal"],
+  ["loft", "Loft & insulation", "fabric", "Internal"],
+  ["kitchen", "Kitchen", "fitout", "Internal"],
+  ["bathroom", "Bathroom", "fitout", "Internal"],
+  ["joinery", "Internal joinery", "cosmetic", "Internal"],
+  ["flooring", "Floor finishes", "cosmetic", "Internal"],
+  ["decoration", "Decoration", "cosmetic", "Internal"],
+  ["electrics", "Electrics", "services", "Services"],
+  ["heating", "Gas & heating", "services", "Services"],
+  ["hotwater", "Hot water", "services", "Services"],
+  ["water", "Water supply (lead pipework)", "services", "Services"],
+  ["drainage", "Drainage", "services", "Services"],
+  ["ventilation", "Ventilation & extract", "services", "Services"],
+  ["alarms", "Smoke & CO alarms", "safety", "Safety"],
+  ["fire", "Fire separation & escape", "safety", "Safety"],
+  ["asbestos", "Suspected asbestos", "safety", "Safety"]
+];
+
+const RED_FLAGS = [
+  ["knotweed", "Japanese knotweed (within or near boundary)", true, "Surveyor / PCA specialist"],
+  ["subsidence", "Subsidence, structural movement or wall-tie failure", true, "Structural engineer"],
+  ["nonstandard", "Non-standard or defective construction", true, "Surveyor / lender"],
+  ["sprayfoam", "Spray foam insulation in roof", true, "Surveyor / lender"],
+  ["asbestos", "Asbestos-containing materials", false, "Asbestos surveyor"],
+  ["flood", "Flood risk (EA zone / surface water)", false, "EA data / insurer"],
+  ["mining", "Coal mining legacy / radon", false, "Coal Authority report"],
+  ["unsigned", "Unregistered or unsigned-off alterations", false, "Solicitor / Building Control"],
+  ["lease", "Leasehold: short lease, ground rent, cladding / EWS1", true, "Solicitor"],
+  ["title", "Title: covenants, rights of way, flying freehold, overage, sitting tenant", true, "Solicitor"],
+  ["planning", "Conservation area, listed, Article 4, licensing designation", false, "Council / planning consultant"],
+  ["auction", "Auction special conditions, completion time, extra fees", false, "Solicitor"]
+];
+
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+function deriveGrade(condition) {
+  let cr3 = 0, structuralCR3 = false, medium = false, rated = 0;
+  for (const [key, , cat] of ELEMENTS) {
+    const c = condition?.[key]?.cr;
+    if (!c) continue;
+    rated++;
+    if (c === 3) { cr3++; if (cat === "structural") structuralCR3 = true; }
+    if ((cat === "services" || cat === "fitout" || cat === "safety") && c >= 2) medium = true;
+    if (cat === "fabric" && c === 3) medium = true;
+  }
+  let grade = "light";
+  if (structuralCR3 || cr3 >= 3) grade = "heavy";
+  else if (medium) grade = "medium";
+  return { grade, cr3, rated, total: ELEMENTS.length };
+}
+
+function sdlt(price, purchaser) {
+  const bands = [[125000, 0], [250000, 0.02], [925000, 0.05], [1500000, 0.10], [Infinity, 0.12]];
+  const surcharge = (purchaser === "company" || purchaser === "additional") && price >= 40000 ? 0.05 : 0;
+  let tax = 0, lower = 0; const lines = [];
+  for (const [upper, rate] of bands) {
+    if (price <= lower) break;
+    const slice = Math.min(price, upper) - lower;
+    const r = rate + surcharge;
+    tax += slice * r;
+    lines.push({ from: lower, to: Math.min(price, upper), rate: r, tax: slice * r });
+    lower = upper;
+  }
+  return { tax: Math.round(tax), lines, surcharge, note: purchaser === "company" && price > 500000 ? "Company purchase over £500k: 17% flat rate may apply unless a relief is claimed. Confirm with solicitor." : "" };
+}
+
+function corpTax(profit) {
+  if (profit <= 0) return 0;
+  if (profit <= 50000) return profit * 0.19;
+  if (profit >= 250000) return profit * 0.25;
+  return profit * 0.25 - 0.015 * (250000 - profit);
+}
+
+function comps(deal) {
+  const rows = (deal.comps || []).filter(c => num(c.price) > 0);
+  const agg = basis => {
+    const set = rows.filter(r => r.basis === basis);
+    let w = 0, s = 0;
+    for (const r of set) { const wt = num(r.weight) || 1; s += num(r.price) * (1 + num(r.adjPct) / 100) * wt; w += wt; }
+    return { value: w ? s / w : 0, n: set.length, set };
+  };
+  const asIs = agg("as-is"), refurb = agg("refurbished");
+  const conf = set => {
+    if (set.length < 2) return "Low";
+    const now = Date.now();
+    const recent = set.every(r => r.date && (now - new Date(r.date).getTime()) / 864e5 <= 730);
+    const vals = set.map(r => num(r.price) * (1 + num(r.adjPct) / 100));
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const spread = (Math.max(...vals) - Math.min(...vals)) / mean;
+    if (set.length >= 3 && recent && spread <= 0.15) return "High";
+    return "Medium";
+  };
+  const v = deal.value || {};
+  const asIsValue = num(v.asIsOverride) || asIs.value;
+  const arv = num(v.arvOverride) || refurb.value;
+  return {
+    asIsValue, arv,
+    asIsFromComps: asIs.value, arvFromComps: refurb.value,
+    asIsN: asIs.n, arvN: refurb.n,
+    asIsConf: num(v.asIsOverride) ? "Override" : conf(asIs.set),
+    arvConf: num(v.arvOverride) ? "Override" : conf(refurb.set)
+  };
+}
+
+function worksTotals(deal, cfg, grade, mult = 1) {
+  const basis = cfg.costBasis;
+  const items = (deal.works || []).filter(w => w.include !== false);
+  const cost = w => {
+    const f = (w.src === "RATE" || w.src === "EST") ? num(cfg.regionalFactor) || 1 : 1;
+    const q = num(w.qty) || 0;
+    const lo = q * num(w.rMin) * f, hi = q * num(w.rMax || w.rMin) * f;
+    return { lo, hi, mid: (lo + hi) / 2 };
+  };
+  const pick = c => basis === "min" ? c.lo : basis === "max" ? c.hi : c.mid;
+  const scope = inScope => {
+    let cons = 0, prof = 0, lo = 0, hi = 0, est = 0;
+    for (const w of items) {
+      if (!inScope(w)) continue;
+      const c = cost(w), v = pick(c);
+      if (w.cat === "Professional & statutory") prof += v; else cons += v;
+      lo += c.lo; hi += c.hi;
+      if (w.src === "EST") est += v;
+    }
+    // red flag mitigations
+    for (const [k] of RED_FLAGS) {
+      const f = deal.flags?.[k];
+      if (f && f.status !== "Clear" && num(f.mitigation) > 0) cons += num(f.mitigation);
+    }
+    const estShare = (cons + prof) > 0 ? est / (cons + prof) : 0;
+    cons *= mult;
+    const contRate = cfg.contingency[grade] ?? 0.15;
+    const contingency = cons * contRate;
+    const total = cons + contingency + prof;
+    return { construction: cons, professional: prof, contingency, contRate, total, lo, hi, estShare };
+  };
+  return {
+    sell: scope(w => w.std === "SELL" || w.std === "BOTH"),
+    let: scope(() => true),
+    cost
+  };
+}
+
+function appraise(deal, cfg, opt = {}) {
+  const p = deal.property || {}, v = deal.value || {}, a = deal.auction || {};
+  const price = opt.price ?? num(p.price);
+  const cond = deriveGrade(deal.condition);
+  const grade = cond.grade;
+  const cmp = comps(deal);
+  const arv = cmp.arv * (1 + (opt.arvDelta || 0));
+  const rent = num(v.rentPcm) * (1 + (opt.rentDelta || 0));
+  const rateBump = opt.rateDelta || 0;
+  const wt = worksTotals(deal, cfg, grade, 1 + (opt.worksDelta || 0));
+  const progMonths = (num(cfg.programmeWeeks[grade]) / 4.33) + (opt.programmeDelta || 0);
+
+  const s = sdlt(price, cfg.purchaser);
+  const auctionCosts = p.route === "auction" ? num(a.premium) + num(a.admin) + num(a.legalPack) : 0;
+  const acquisition = price + s.tax + num(cfg.acq.legal) + num(cfg.acq.survey) + auctionCosts;
+  const hold = num(cfg.holding.councilTaxMonthly) + num(cfg.holding.insuranceMonthly) + num(cfg.holding.utilitiesMonthly);
+
+  const bridgeCost = (months, worksTotal) => {
+    const L = price * num(cfg.bridge.ltv) + worksTotal * num(cfg.bridge.worksFunded);
+    const rate = num(cfg.bridge.monthlyRate) + rateBump / 12;
+    const interest = L * rate * months;
+    const fees = L * num(cfg.bridge.arrFee) + L * num(cfg.bridge.exitFee) + L * num(cfg.bridge.brokerFee) + num(cfg.bridge.valuation) + num(cfg.bridge.legal);
+    return { L, interest, fees, total: interest + fees, months };
+  };
+
+  // FLIP
+  const fMonths = progMonths + num(cfg.sale.monthsToSell);
+  const fb = bridgeCost(fMonths, wt.sell.total);
+  const fHold = hold * fMonths;
+  const saleCosts = arv * num(cfg.sale.agentPct) * 1.2 + num(cfg.sale.conveyancing);
+  const fCost = acquisition + wt.sell.total + fb.total + fHold + saleCosts;
+  const fProfit = arv - fCost;
+  const fCashIn = fCost - saleCosts - fb.L;
+  const fTax = corpTax(fProfit);
+  const flip = {
+    months: fMonths, bridge: fb, holding: fHold, saleCosts, works: wt.sell, totalCost: fCost, gdv: arv,
+    profit: fProfit, profitOnCost: fCost ? fProfit / fCost : 0, profitOnGdv: arv ? fProfit / arv : 0,
+    cashIn: fCashIn, roce: fCashIn > 0 ? fProfit / fCashIn : 0, roceAnnual: fCashIn > 0 && fMonths ? (fProfit / fCashIn) * 12 / fMonths : 0,
+    tax: fTax, profitAfterTax: fProfit - fTax
+  };
+  flip.pass = flip.profitOnGdv >= cfg.targets.flipProfitOnGdv && flip.profitOnCost >= cfg.targets.flipProfitOnCost;
+
+  // BRRR
+  const bMonths = Math.max(progMonths + num(cfg.refi.processMonths), num(cfg.refi.minOwnMonths));
+  const bb = bridgeCost(bMonths, wt.let.total);
+  const bHold = hold * (progMonths + num(cfg.letting.monthsToLet));
+  const bCost = acquisition + wt.let.total + bb.total + bHold;
+  const refiVal = arv * (1 - num(cfg.refi.haircut));
+  const ltvLoan = refiVal * num(cfg.refi.ltv);
+  const stress = num(cfg.refi.stressRate) + rateBump;
+  const icrMax = stress > 0 && cfg.refi.icr > 0 ? (rent * 12) / (stress * num(cfg.refi.icr)) : Infinity;
+  const newLoan = Math.max(0, Math.min(ltvLoan, icrMax));
+  const refiCosts = newLoan * num(cfg.refi.productFee) + num(cfg.refi.valuation) + num(cfg.refi.legal);
+  const leftIn = bCost + refiCosts - newLoan;
+  const gross = rent * 12;
+  const voids = gross * num(cfg.letting.voids);
+  const mgmt = (gross - voids) * num(cfg.letting.mgmt) * 1.2;
+  const maint = gross * num(cfg.letting.maint);
+  const other = num(cfg.letting.insuranceAnnual) + num(v.licensingAnnual) + num(p.groundRent) + num(p.serviceCharge);
+  const netOp = gross - voids - mgmt - maint - other;
+  const interest = newLoan * (num(cfg.refi.payRate) + rateBump);
+  const cfAnnual = netOp - interest;
+  const brrr = {
+    months: bMonths, bridge: bb, holding: bHold, works: wt.let, totalCost: bCost,
+    refiVal, ltvLoan, icrMax, newLoan, icrCapped: icrMax < ltvLoan, refiCosts, leftIn,
+    gross, voids, mgmt, maint, other, netOp, interest, cfAnnual, cfMonthly: cfAnnual / 12,
+    netYield: price ? netOp / price : 0,
+    icrActual: newLoan ? gross / (newLoan * stress) : 0,
+    roi: leftIn > 0 ? cfAnnual / leftIn : Infinity
+  };
+  brrr.pass = rent > 0 && brrr.leftIn <= cfg.targets.brrrMaxLeftIn && brrr.cfMonthly >= cfg.targets.brrrMinCashflow;
+
+  return { price, grade, cond, cmp: { ...cmp, arv }, sdlt: s, auctionCosts, acquisition, progMonths, flip, brrr, rent };
+}
+
+function maxOffer(deal, cfg, strategy) {
+  const test = price => {
+    const r = appraise(deal, cfg, { price });
+    return strategy === "flip" ? r.flip.pass : r.brrr.pass;
+  };
+  const cmp = comps(deal);
+  if (!cmp.arv) return { value: null, reason: "No ARV yet" };
+  if (strategy === "brrr" && !num(deal.value?.rentPcm)) return { value: null, reason: "No rent entered" };
+  if (!test(1000)) {
+    if (strategy === "brrr") {
+      const r = appraise(deal, cfg, { price: 1000 });
+      if (r.brrr.cfMonthly < cfg.targets.brrrMinCashflow) return { value: null, reason: "Cashflow target fails at any price" };
+    }
+    return { value: null, reason: "Targets fail at any price" };
+  }
+  let lo = 1000, hi = cmp.arv * 1.5;
+  if (test(hi)) return { value: hi, reason: "Not constrained below 150% of ARV" };
+  for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; if (test(mid)) lo = mid; else hi = mid; }
+  const mao = Math.floor(lo / 500) * 500;
+  const r = appraise(deal, cfg, { price: lo + 1000 });
+  let binding = "";
+  if (strategy === "flip") binding = r.flip.profitOnGdv < cfg.targets.flipProfitOnGdv ? "Profit on GDV target" : "Profit on cost target";
+  else binding = r.brrr.leftIn > cfg.targets.brrrMaxLeftIn ? "Money-left-in target" : "Cashflow target";
+  return { value: mao, binding };
+}
+
+const SCENARIOS = [
+  ["Base case", {}],
+  ["ARV −5%", { arvDelta: -0.05 }],
+  ["ARV −10%", { arvDelta: -0.10 }],
+  ["Works +15%", { worksDelta: 0.15 }],
+  ["Works +30%", { worksDelta: 0.30 }],
+  ["Programme +3 months", { programmeDelta: 3 }],
+  ["Rates +1 point", { rateDelta: 0.01 }],
+  ["Rent −10%", { rentDelta: -0.10 }],
+  ["ARV −10% and works +15%", { arvDelta: -0.10, worksDelta: 0.15 }]
+];
+
+function sensitivity(deal, cfg) {
+  return SCENARIOS.map(([label, o]) => {
+    const r = appraise(deal, cfg, o);
+    return { label, flip: r.flip, brrr: r.brrr };
+  });
+}
+
+function verdict(deal, cfg) {
+  const r = appraise(deal, cfg);
+  const conditions = [], blockers = [];
+  for (const [k, label, critical] of RED_FLAGS) {
+    const f = deal.flags?.[k];
+    if (!f) continue;
+    if (f.status === "Confirmed" && critical && !(num(f.mitigation) > 0)) blockers.push(`${label}: confirmed with no costed mitigation`);
+    else if (f.status === "Suspected") conditions.push(`Resolve suspected: ${label}`);
+    else if (f.status === "Confirmed") conditions.push(`Confirmed and costed: ${label}`);
+  }
+  if (!r.cmp.arv) return { verdict: "INCOMPLETE", reason: "Add comparables or an ARV to appraise.", conditions, blockers, r };
+  if (!r.price) return { verdict: "INCOMPLETE", reason: "Add the purchase price.", conditions, blockers, r };
+  const stress = appraise(deal, cfg, { arvDelta: -0.10, worksDelta: 0.15 });
+  const flipOK = r.flip.pass, brrrOK = r.brrr.pass;
+  let rec = "None";
+  if (flipOK && brrrOK) rec = "Either";
+  else if (flipOK) rec = "Flip";
+  else if (brrrOK) rec = "BRRR";
+  if (r.cmp.arvConf === "Low") conditions.push("ARV confidence is low: add refurbished comparables");
+  if (r.cond.rated < 10) conditions.push(`Only ${r.cond.rated} of ${r.cond.total} elements rated`);
+  const est = Math.max(r.flip.works.estShare || 0, r.brrr.works.estShare || 0);
+  if (est > 0.3) conditions.push(`${Math.round(est * 100)}% of works cost is AI or own estimate: get quotes`);
+  if (r.brrr.icrCapped) conditions.push("Refinance loan limited by ICR, not LTV");
+  if (!(deal.works || []).length) conditions.push("No works items yet");
+  let v, reason;
+  if (blockers.length) { v = "NO-GO"; reason = "Critical red flag without costed mitigation."; }
+  else if (!flipOK && !brrrOK) { v = "NO-GO"; reason = "Base case misses targets for both strategies."; }
+  else {
+    const stressOK = (rec === "Flip" && stress.flip.pass) || (rec === "BRRR" && stress.brrr.pass) || (rec === "Either" && (stress.flip.pass || stress.brrr.pass));
+    if (!stressOK) conditions.unshift("Fails the ARV −10% and works +15% stress test");
+    const suspected = conditions.some(c => c.startsWith("Resolve suspected"));
+    if (stressOK && !suspected && r.cmp.arvConf !== "Low") { v = "GO"; reason = "Passes base case and stress test."; }
+    else { v = "CONDITIONAL GO"; reason = "Passes base case; clear the conditions below."; }
+  }
+  return { verdict: v, reason, recommended: rec, conditions, blockers, r, stress };
+}
+
+if (false && typeof module !== "undefined") module.exports = { DEFAULT_CFG, ELEMENTS, RED_FLAGS, deriveGrade, sdlt, corpTax, comps, worksTotals, appraise, maxOffer, sensitivity, verdict };
+
+/* ===== App state ===== */
+const CATS = ["Health & safety", "Energy performance", "Fabric & structure", "Windows, doors & security", "Internal fit-out", "Externals", "Professional & statutory"];
+const PRIORITIES = ["Critical", "Required", "Value-add", "Optional"];
+const SRCS = ["RATE", "QUOTE", "EST", "USER"];
+const STEPS = [["property", "Property"], ["value", "Value"], ["condition", "Condition"], ["works", "Works"], ["appraisal", "Appraisal"], ["verdict", "Red flags & verdict"], ["report", "Report"]];
+const VERIFY = [
+  ["sdlt", "SDLT bands and 5% higher rates (England, from 1 Apr 2025 / 31 Oct 2024)", "GOV.UK / solicitor"],
+  ["ct", "Corporation tax 19% / 25% with marginal relief", "Accountant"],
+  ["mees", "MEES minimum EPC for lets, and any confirmed uplift date", "GOV.UK"],
+  ["rra", "Renters' Rights Act 2025 commencement: Decent Homes Standard in PRS, Awaab's Law", "GOV.UK"],
+  ["eicr", "Electrical Safety Standards in the PRS (England) Regs 2020: 5-yearly EICR", "GOV.UK"],
+  ["alarms", "Smoke and CO Alarm (Amendment) Regs 2022", "GOV.UK"],
+  ["gas", "Gas Safety (Installation and Use) Regs 1998: annual record", "GOV.UK"],
+  ["licensing", "Local selective / additional licensing and Article 4 directions", "Local council"],
+  ["lender", "Refinance 6-month rule, ICR and stress rate criteria", "Mortgage broker"],
+  ["rates", "Rate library replaced with mentor or contractor rates", "Mentor / contractors"]
+];
+
+const S = {
+  view: "deals", step: "property",
+  deals: {}, currentId: null,
+  cfg: structuredClone(DEFAULT_CFG),
+  rates: structuredClone(SEED_RATES),
+  verify: {},
+  store: "none", uid: null, db: null, sample: null, downloads: null,
+  saving: new Set(), aiBusy: false, aiCtl: null, aiMsg: ""
+};
+const deal = () => S.deals[S.currentId];
+
+/* ===== Helpers ===== */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const gbp = n => (n < 0 ? "−£" : "£") + Math.round(Math.abs(n || 0)).toLocaleString("en-GB");
+const pct = (n, d = 1) => isFinite(n) ? (n * 100).toFixed(d) + "%" : "∞";
+const uid = () => Math.random().toString(36).slice(2, 10);
+const get = (o, path) => path.split(".").reduce((a, k) => a?.[k], o);
+const set = (o, path, v) => { const ks = path.split("."); let a = o; ks.slice(0, -1).forEach(k => { a[k] = a[k] ?? {}; a = a[k]; }); a[ks.at(-1)] = v; };
+const $ = s => document.querySelector(s);
+
+function newDeal() {
+  const id = "deal-" + Date.now().toString(36) + uid().slice(0, 4);
+  return {
+    id, createdAt: Date.now(), updatedAt: Date.now(), engine: ENGINE_VERSION,
+    property: { name: "", address: "", postcode: "", type: "Terraced", tenure: "Freehold", beds: "2", route: "agent", standard: "BOTH", construction: "Solid wall", epc: "" },
+    auction: {}, value: {}, comps: [], condition: {}, works: [], flags: {}, aiSummary: ""
+  };
+}
+
+/* ===== Storage ===== */
+const saveTimers = {};
+function scheduleSave(key, fn, delay = 900) {
+  clearTimeout(saveTimers[key]);
+  S.saving.add(key); paintStatus();
+  saveTimers[key] = setTimeout(async () => {
+    try { await fn(); } catch (e) { console.warn(e); toast("Couldn't save. Changes are kept on this page; try again shortly."); }
+    S.saving.delete(key); paintStatus();
+  }, delay);
+}
+async function writeDoc(name, body) {
+  if (S.store === "db") return S.db.doc(`data/users/${S.uid}/${name}`).set(body);
+  if (S.store === "local") { try { localStorage.setItem("bmv:" + name, JSON.stringify(body)); } catch (e) { } }
+}
+async function removeDoc(name) {
+  if (S.store === "db") return S.db.doc(`data/users/${S.uid}/${name}`).delete();
+  if (S.store === "local") { try { localStorage.removeItem("bmv:" + name); } catch (e) { } }
+}
+const saveDeal = d => { d.updatedAt = Date.now(); scheduleSave(d.id, () => writeDoc(d.id, JSON.parse(JSON.stringify(d)))); };
+const saveCfg = () => scheduleSave("settings", () => writeDoc("settings", { cfg: S.cfg, verify: S.verify }));
+const saveRates = () => scheduleSave("rates", () => writeDoc("rates", { items: S.rates }));
+
+async function initStore() {
+  try {
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    const id = user ? await user.id() : null;
+    if (db && id) {
+      S.db = db; S.uid = id; S.store = "db";
+      const snap = await db.collection(`data/users/${id}`).get();
+      for (const d of snap.docs) {
+        const body = d.data();
+        if (d.id.startsWith("deal-")) S.deals[d.id] = body;
+        else if (d.id === "settings") { S.cfg = mergeCfg(body.cfg); S.verify = body.verify || {}; }
+        else if (d.id === "rates" && Array.isArray(body.items)) S.rates = body.items;
+      }
+      return;
+    }
+  } catch (e) { console.warn("db unavailable", e); }
+  S.store = "local";
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i); if (!k.startsWith("bmv:")) continue;
+      const body = JSON.parse(localStorage.getItem(k)); const name = k.slice(4);
+      if (name.startsWith("deal-")) S.deals[name] = body;
+      else if (name === "settings") { S.cfg = mergeCfg(body.cfg); S.verify = body.verify || {}; }
+      else if (name === "rates") S.rates = body.items;
+    }
+  } catch (e) { S.store = "none"; }
+}
+function mergeCfg(c) {
+  const out = structuredClone(DEFAULT_CFG);
+  for (const k in c || {}) out[k] = (typeof out[k] === "object" && out[k]) ? { ...out[k], ...c[k] } : c[k];
+  return out;
+}
+
+/* ===== Chrome ===== */
+function paintStatus() {
+  const el = $("#status"); if (!el) return;
+  const where = S.store === "db" ? "Saved to your account" : S.store === "local" ? "Saved in this browser only" : "Not saving";
+  el.textContent = S.saving.size ? "Saving…" : where;
+}
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 4200); }
+
+function paintNav() {
+  document.querySelectorAll("[data-nav]").forEach(b => b.setAttribute("aria-current", b.dataset.nav === S.view ? "page" : "false"));
+  const assess = document.querySelector('[data-nav="assess"]');
+  assess.disabled = !deal();
+}
+
+function paintLedger() {
+  const L = $("#ledger");
+  const d = deal();
+  if (S.view !== "assess" || !d) { L.hidden = true; return; }
+  L.hidden = false;
+  const v = verdict(d, S.cfg), r = v.r;
+  const cls = { "GO": "go", "CONDITIONAL GO": "cond", "NO-GO": "nogo" }[v.verdict] || "inc";
+  L.innerHTML = `
+    <div class="lg-name">${esc(d.property.name || d.property.address || "Untitled deal")}<span>${r.grade} refurb · ${d.property.standard}</span></div>
+    <div class="lg-cell"><span>Works (sell / let)</span><b>${gbp(r.flip.works.total)} / ${gbp(r.brrr.works.total)}</b></div>
+    <div class="lg-cell"><span>Flip profit</span><b class="${r.flip.pass ? "" : "neg"}">${gbp(r.flip.profit)} <small>${pct(r.flip.profitOnGdv)} GDV</small></b></div>
+    <div class="lg-cell"><span>BRRR left in · cashflow</span><b class="${r.brrr.pass ? "" : "neg"}">${gbp(r.brrr.leftIn)} · ${gbp(r.brrr.cfMonthly)}/m</b></div>
+    <div class="lg-verdict ${cls}">${v.verdict}</div>`;
+}
+
+function render() {
+  paintNav(); paintStatus();
+  const V = $("#view");
+  if (S.view === "deals") V.innerHTML = viewDeals();
+  else if (S.view === "rates") V.innerHTML = viewRates();
+  else if (S.view === "settings") V.innerHTML = viewSettings();
+  else if (S.view === "assess" && deal()) V.innerHTML = viewAssess();
+  else { S.view = "deals"; V.innerHTML = viewDeals(); }
+  refreshCalc();
+}
+function refreshCalc() {
+  document.querySelectorAll("[data-calc]").forEach(el => { const fn = CALC[el.dataset.calc]; if (fn) el.innerHTML = fn(); });
+  paintLedger();
+}
+
+/* ===== Form fields ===== */
+function field(label, path, opts = {}) {
+  const src = opts.src || "deal";
+  const obj = src === "cfg" ? S.cfg : deal();
+  let v = get(obj, path);
+  const t = opts.t || "text";
+  const attrs = `data-k="${path}" data-src="${src}" data-t="${t}" id="f-${path.replace(/\./g, "-")}"`;
+  let input;
+  if (opts.options) {
+    input = `<select ${attrs}>${opts.options.map(o => { const [val, lab] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(val)}"${String(v) === String(val) ? " selected" : ""}>${esc(lab)}</option>`; }).join("")}</select>`;
+  } else if (t === "area") {
+    input = `<textarea ${attrs} rows="3">${esc(v)}</textarea>`;
+  } else {
+    if (t === "pct" && v !== undefined && v !== "") v = +(v * 100).toFixed(3);
+    const it = t === "num" || t === "pct" ? `type="number" inputmode="decimal" step="any"` : t === "date" ? `type="date"` : `type="text"`;
+    input = `<div class="inp${opts.pre ? " has-pre" : ""}${t === "pct" || opts.suf ? " has-suf" : ""}">${opts.pre ? `<i>${opts.pre}</i>` : ""}<input ${it} ${attrs} value="${esc(v ?? "")}" placeholder="${esc(opts.ph || "")}">${t === "pct" ? "<i>%</i>" : opts.suf ? `<i>${opts.suf}</i>` : ""}</div>`;
+  }
+  return `<label class="fld${opts.wide ? " wide" : ""}" for="f-${path.replace(/\./g, "-")}"><span>${label}</span>${input}${opts.hint ? `<small>${opts.hint}</small>` : ""}</label>`;
+}
+function readVal(el) {
+  const t = el.dataset.t;
+  if (t === "num") return el.value === "" ? "" : parseFloat(el.value);
+  if (t === "pct") return el.value === "" ? 0 : parseFloat(el.value) / 100;
+  return el.value;
+}
+
+/* ===== Views: deals ===== */
+function viewDeals() {
+  const list = Object.values(S.deals).sort((a, b) => b.updatedAt - a.updatedAt);
+  const rows = list.map(d => {
+    const v = verdict(d, S.cfg);
+    const cls = { "GO": "go", "CONDITIONAL GO": "cond", "NO-GO": "nogo" }[v.verdict] || "inc";
+    return `<li class="deal-row">
+      <button class="deal-open" data-act="open" data-id="${d.id}">
+        <b>${esc(d.property.name || d.property.address || "Untitled deal")}</b>
+        <span>${esc([d.property.postcode, d.property.beds && d.property.beds + "-bed", d.property.type].filter(Boolean).join(", "))}</span>
+        <span class="muted">Updated ${new Date(d.updatedAt).toLocaleDateString("en-GB")}${d.property.price ? " · " + gbp(d.property.price) : ""}</span>
+      </button>
+      <span class="pill ${cls}">${v.verdict}</span>
+      <button class="icon-btn" data-act="del-deal" data-id="${d.id}" aria-label="Delete deal">Delete</button>
+    </li>`;
+  }).join("");
+  return `<section class="page">
+    <div class="page-head"><h1>Assessments</h1><button class="btn primary" data-act="new-deal">New assessment</button></div>
+    ${S.store === "local" ? `<p class="note">Your account storage isn't available in this view, so assessments save in this browser only.</p>` : ""}
+    ${list.length ? `<ul class="deal-list">${rows}</ul>` : `<div class="empty"><h2>No assessments yet</h2><p>Start one to record the property, rate its condition, draft the works and see Flip and BRRR side by side.</p><button class="btn primary" data-act="new-deal">Start an assessment</button></div>`}
+  </section>`;
+}
+
+/* ===== Views: assess ===== */
+function viewAssess() {
+  const steps = STEPS.map(([k, l], i) => `<button class="step" data-step="${k}" aria-current="${S.step === k ? "step" : "false"}"><span>${i + 1}</span>${l}</button>`).join("");
+  const body = { property: stepProperty, value: stepValue, condition: stepCondition, works: stepWorks, appraisal: stepAppraisal, verdict: stepVerdict, report: stepReport }[S.step]();
+  const idx = STEPS.findIndex(s => s[0] === S.step);
+  const nav = `<div class="step-foot">${idx > 0 ? `<button class="btn" data-step="${STEPS[idx - 1][0]}">Back: ${STEPS[idx - 1][1]}</button>` : "<span></span>"}${idx < STEPS.length - 1 ? `<button class="btn primary" data-step="${STEPS[idx + 1][0]}">Next: ${STEPS[idx + 1][1]}</button>` : ""}</div>`;
+  return `<nav class="steps" aria-label="Assessment steps">${steps}</nav><section class="page">${body}${nav}</section>`;
+}
+
+function stepProperty() {
+  const d = deal();
+  return `<h1>Property</h1>
+  <div class="grid">
+    ${field("Deal name", "property.name", { ph: "e.g. Milkstone Rd" })}
+    ${field("Address", "property.address", { wide: true })}
+    ${field("Postcode", "property.postcode")}
+    ${field("Type", "property.type", { options: ["Terraced", "End-terrace", "Semi-detached", "Detached", "Flat", "Maisonette"] })}
+    ${field("Bedrooms", "property.beds", { options: ["2", "3"] })}
+    ${field("Floor area (GIA)", "property.gia", { t: "num", suf: "m²" })}
+    ${field("Tenure", "property.tenure", { options: ["Freehold", "Leasehold"] })}
+    ${d.property.tenure === "Leasehold" ? field("Lease years left", "property.leaseYears", { t: "num" }) + field("Ground rent (annual)", "property.groundRent", { t: "num", pre: "£" }) + field("Service charge (annual)", "property.serviceCharge", { t: "num", pre: "£" }) : ""}
+    ${field("Construction", "property.construction", { options: ["Solid wall", "Cavity wall", "Timber frame", "Non-standard (PRC / steel / other)", "Unknown"] })}
+    ${field("Approx. era", "property.era", { ph: "e.g. 1900s" })}
+    ${field("Current EPC", "property.epc", { options: ["", "A", "B", "C", "D", "E", "F", "G"].map(x => [x, x || "Not known"]) })}
+    ${field("Heating", "property.heating", { ph: "e.g. gas combi, 12 yrs" })}
+  </div>
+  <h2>Purchase</h2>
+  <div class="grid">
+    ${field("Route", "property.route", { options: [["agent", "Estate agent"], ["auction", "Auction"], ["direct", "Direct to vendor"]] })}
+    ${field("Purchase or guide price", "property.price", { t: "num", pre: "£" })}
+    ${field("Standard to reach", "property.standard", { options: [["SELL", "Sell (mortgageable)"], ["LET", "Let (full PRS compliance)"], ["BOTH", "Both"]], hint: "Flip is costed on the sell scope, BRRR on the let scope." })}
+    ${d.property.route === "auction" ? field("Buyer's premium", "auction.premium", { t: "num", pre: "£" }) + field("Admin fee", "auction.admin", { t: "num", pre: "£" }) + field("Legal pack reimbursements", "auction.legalPack", { t: "num", pre: "£" }) : ""}
+  </div>
+  ${field("Notes from viewing or listing", "property.notes", { t: "area", wide: true })}`;
+}
+
+function stepValue() {
+  const d = deal();
+  const rows = d.comps.map((c, i) => `<tr>
+    <td><input data-comp="${i}" data-f="addr" value="${esc(c.addr)}" aria-label="Address"></td>
+    <td><input type="date" data-comp="${i}" data-f="date" value="${esc(c.date)}" aria-label="Sale date"></td>
+    <td><input type="number" inputmode="decimal" data-comp="${i}" data-f="price" value="${esc(c.price)}" aria-label="Price"></td>
+    <td><select data-comp="${i}" data-f="basis" aria-label="Condition">${["as-is", "refurbished"].map(o => `<option${c.basis === o ? " selected" : ""}>${o}</option>`).join("")}</select></td>
+    <td><input type="number" inputmode="decimal" data-comp="${i}" data-f="adjPct" value="${esc(c.adjPct)}" aria-label="Adjustment percent"></td>
+    <td><input type="number" inputmode="decimal" data-comp="${i}" data-f="weight" value="${esc(c.weight ?? 1)}" aria-label="Weight"></td>
+    <td><button class="icon-btn" data-act="del-comp" data-i="${i}" aria-label="Remove comparable">Remove</button></td></tr>`).join("");
+  return `<h1>Value</h1>
+  <p class="lede">Enter sold comparables from HM Land Registry Price Paid or your market data provider: same street first, then the postcode sector, same type and beds, last 24 months. Use the adjustment column for time (UK HPI) and condition differences.</p>
+  <div class="scroll"><table class="tbl comps"><thead><tr><th>Address</th><th>Sold</th><th>Price £</th><th>Condition</th><th>Adj %</th><th>Weight</th><th></th></tr></thead>
+  <tbody>${rows || `<tr><td colspan="7" class="muted">No comparables yet.</td></tr>`}</tbody></table></div>
+  <button class="btn" data-act="add-comp">Add comparable</button>
+  <div data-calc="value"></div>
+  <h2>Overrides and rent</h2>
+  <div class="grid">
+    ${field("As-is value override", "value.asIsOverride", { t: "num", pre: "£", hint: "Leave blank to use comparables." })}
+    ${field("ARV override", "value.arvOverride", { t: "num", pre: "£" })}
+    ${field("Achievable rent", "value.rentPcm", { t: "num", pre: "£", suf: "pcm" })}
+    ${field("Licensing cost (annualised)", "value.licensingAnnual", { t: "num", pre: "£" })}
+  </div>`;
+}
+
+const CALC = {
+  value() {
+    const d = deal(), c = comps(d), price = +d.property.price || 0;
+    const dAs = c.asIsValue - price, dArv = c.arv - price;
+    return `<div class="figs">
+      <div class="fig"><span>As-is market value</span><b>${c.asIsValue ? gbp(c.asIsValue) : "—"}</b><small>${c.asIsN} comps · confidence ${c.asIsConf}</small></div>
+      <div class="fig"><span>After-repair value (ARV)</span><b>${c.arv ? gbp(c.arv) : "—"}</b><small>${c.arvN} comps · confidence ${c.arvConf}</small></div>
+      <div class="fig ${dAs > 0 ? "pos" : "neg"}"><span>BMV against as-is value</span><b>${c.asIsValue && price ? gbp(dAs) + " · " + pct(dAs / c.asIsValue) : "—"}</b><small>This is the true discount.</small></div>
+      <div class="fig quiet"><span>Gap to ARV (not a BMV measure)</span><b>${c.arv && price ? gbp(dArv) + " · " + pct(dArv / c.arv) : "—"}</b><small>Before any works or costs.</small></div>
+    </div>`;
+  },
+  grade() {
+    const g = deriveGrade(deal().condition);
+    const expl = { light: "No CR3 items and no service or fit-out defects.", medium: "Service, fit-out or safety items need work; no structural CR3.", heavy: "A structural or fabric CR3, or three or more CR3 items." }[g.grade];
+    return `<div class="grade g-${g.grade}"><b>${g.grade[0].toUpperCase() + g.grade.slice(1)} refurb</b><span>${expl}</span><small>${g.rated} of ${g.total} elements rated · ${g.cr3} at CR3 · contingency ${pct(S.cfg.contingency[g.grade], 0)} · programme ~${S.cfg.programmeWeeks[g.grade]} weeks</small></div>`;
+  },
+  worksTotals() {
+    const d = deal(), g = deriveGrade(d.condition).grade, t = worksTotals(d, S.cfg, g);
+    const col = (label, x) => `<div class="tot"><h3>${label}</h3>
+      <dl><dt>Construction</dt><dd>${gbp(x.construction)}</dd><dt>Contingency (${pct(x.contRate, 0)}, ${g})</dt><dd>${gbp(x.contingency)}</dd><dt>Professional & statutory</dt><dd>${gbp(x.professional)}</dd><dt class="sum">Total (${S.cfg.costBasis} basis)</dt><dd class="sum">${gbp(x.total)}</dd></dl>
+      <small>Range before contingency ${gbp(x.lo)} – ${gbp(x.hi)} · ${pct(x.estShare, 0)} from estimates</small></div>`;
+    return `<div class="tots">${col("Sell scope (Flip)", t.sell)}${col("Let scope (BRRR)", t.let)}</div>`;
+  },
+  itemCosts() { return ""; },
+  appraisal() { return appraisalHTML(); },
+  verdict() { return verdictHTML(); },
+  report() { return `<pre class="md">${esc(reportMD())}</pre>`; }
+};
+
+function stepCondition() {
+  const d = deal();
+  const groups = {};
+  for (const e of ELEMENTS) (groups[e[3]] = groups[e[3]] || []).push(e);
+  const rows = Object.entries(groups).map(([g, els]) => `<h2>${g}</h2><div class="cond">${els.map(([k, label]) => {
+    const c = d.condition[k] || {};
+    return `<div class="cond-row"><span class="cond-name">${label}</span>
+      <div class="seg" role="radiogroup" aria-label="${esc(label)} condition">${[1, 2, 3].map(n => `<button role="radio" aria-checked="${c.cr === n}" class="cr cr${n}" data-act="cr" data-el="${k}" data-n="${n}">CR${n}</button>`).join("")}</div>
+      <input class="cond-note" data-cnote="${k}" value="${esc(c.note)}" placeholder="Evidence or note" aria-label="${esc(label)} note"></div>`;
+  }).join("")}</div>`).join("");
+  return `<h1>Condition</h1>
+  <p class="lede">RICS ratings: CR1 no repair needed, CR2 repair needed but not urgent, CR3 serious or urgent, or needs investigation. Tap again to clear. The refurb grade is worked out from these.</p>
+  <div data-calc="grade"></div>${rows}`;
+}
+
+function stepWorks() {
+  const d = deal();
+  const g = deriveGrade(d.condition).grade;
+  const t = worksTotals(d, S.cfg, g);
+  const items = d.works.map((w, i) => {
+    const c = t.cost(w);
+    return `<article class="wk${w.include === false ? " off" : ""}">
+      <div class="wk-top">
+        <input type="checkbox" data-w="${i}" data-f="include" ${w.include !== false ? "checked" : ""} aria-label="Include item">
+        <input class="wk-item" data-w="${i}" data-f="item" value="${esc(w.item)}" aria-label="Item">
+        <b class="wk-cost">${gbp(c.lo)} – ${gbp(c.hi)}</b>
+        <button class="icon-btn" data-act="del-w" data-i="${i}" aria-label="Remove item">Remove</button>
+      </div>
+      <div class="wk-grid">
+        <label><span>Category</span><select data-w="${i}" data-f="cat">${CATS.map(o => `<option${w.cat === o ? " selected" : ""}>${o}</option>`).join("")}</select></label>
+        <label><span>Standard</span><select data-w="${i}" data-f="std">${["SELL", "LET", "BOTH"].map(o => `<option${w.std === o ? " selected" : ""}>${o}</option>`).join("")}</select></label>
+        <label><span>Priority</span><select data-w="${i}" data-f="priority">${PRIORITIES.map(o => `<option${w.priority === o ? " selected" : ""}>${o}</option>`).join("")}</select></label>
+        <label><span>Qty</span><input type="number" inputmode="decimal" data-w="${i}" data-f="qty" value="${esc(w.qty)}"></label>
+        <label><span>Unit</span><input data-w="${i}" data-f="unit" value="${esc(w.unit)}"></label>
+        <label><span>Rate min £</span><input type="number" inputmode="decimal" data-w="${i}" data-f="rMin" value="${esc(w.rMin)}"></label>
+        <label><span>Rate max £</span><input type="number" inputmode="decimal" data-w="${i}" data-f="rMax" value="${esc(w.rMax)}"></label>
+        <label><span>Source</span><select data-w="${i}" data-f="src">${SRCS.map(o => `<option${w.src === o ? " selected" : ""}>${o}</option>`).join("")}</select></label>
+      </div>
+      <details class="wk-more"><summary>Regulation, certificate and description${w.reg ? ": " + esc(w.reg) : ""}</summary><div class="wk-grid">
+        <label class="w2"><span>Regulatory ref</span><input data-w="${i}" data-f="reg" value="${esc(w.reg)}"></label>
+        <label class="w2"><span>Certificate / sign-off</span><input data-w="${i}" data-f="cert" value="${esc(w.cert)}"></label>
+        <label class="w4"><span>Trigger and description</span><input data-w="${i}" data-f="desc" value="${esc(w.desc)}"></label>
+      </div></details>
+      ${w.ai ? `<small class="ai-tag">Drafted by Claude${w.src === "EST" ? " · estimate, illustrative" : ""}</small>` : ""}
+    </article>`;
+  }).join("");
+  const rateOpts = S.rates.map(r => `<option value="${esc(r.key)}">${esc(r.item)} (${r.unit})</option>`).join("");
+  return `<h1>Works and costs</h1>
+  <div class="ai-box">
+    <div><b>Draft the works list</b><p>Claude reads the property, condition ratings and selected standard, then drafts items priced from your rate library. You review every line. Maths stays in the tool.</p></div>
+    ${S.sample ? (S.aiBusy ? `<button class="btn" data-act="ai-stop">Stop</button>` : `<button class="btn primary" data-act="ai-draft">${d.works.some(w => w.ai) ? "Redraft with Claude" : "Draft with Claude"}</button>`) : `<p class="muted">Drafting with Claude isn't available in this view. Add items manually.</p>`}
+    ${S.aiMsg ? `<p class="ai-msg" role="status">${esc(S.aiMsg)}</p>` : ""}
+    ${d.aiSummary ? `<p class="ai-sum">${esc(d.aiSummary)}</p>` : ""}
+  </div>
+  <div class="add-row">
+    <select id="rate-pick" aria-label="Add from rate library"><option value="">Add from rate library…</option>${rateOpts}</select>
+    <button class="btn" data-act="add-w">Add blank item</button>
+  </div>
+  <div class="wks">${items || `<div class="empty small"><p>No works yet. Draft with Claude or add items from the rate library.</p></div>`}</div>
+  <div class="grid">${field("Cost basis for appraisal", "costBasis", { src: "cfg", options: [["min", "Minimum"], ["mid", "Midpoint"], ["max", "Maximum"]] })}${field("Regional cost factor", "regionalFactor", { src: "cfg", t: "num", hint: "Applies to RATE and EST items only." })}</div>
+  <div data-calc="worksTotals"></div>`;
+}
+
+function stepAppraisal() {
+  return `<h1>Appraisal</h1><p class="lede">Flip is costed on the sell scope, BRRR on the let scope. Targets and finance terms are in Settings.</p><div data-calc="appraisal"></div>`;
+}
+
+function appraisalHTML() {
+  const d = deal(), r = appraise(d, S.cfg), f = r.flip, b = r.brrr, T = S.cfg.targets;
+  const row = (l, v, cls = "") => `<tr class="${cls}"><th>${l}</th><td>${v}</td></tr>`;
+  const mf = maxOffer(d, S.cfg, "flip"), mb = maxOffer(d, S.cfg, "brrr");
+  const mao = (m) => m.value == null ? `<b>None</b><small>${esc(m.reason)}</small>` : `<b>${gbp(m.value)}</b><small>${r.price ? (m.value >= r.price ? "Headroom " + gbp(m.value - r.price) : "Over by " + gbp(r.price - m.value)) : ""} · binding: ${esc(m.binding || m.reason)}</small>`;
+  const sens = sensitivity(d, S.cfg).map(s => `<tr><th>${s.label}</th>
+    <td class="${s.flip.pass ? "" : "neg"}">${gbp(s.flip.profit)}</td><td class="${s.flip.pass ? "" : "neg"}">${pct(s.flip.profitOnGdv)}</td>
+    <td class="${s.brrr.leftIn <= T.brrrMaxLeftIn ? "" : "neg"}">${gbp(s.brrr.leftIn)}</td><td class="${s.brrr.cfMonthly >= T.brrrMinCashflow ? "" : "neg"}">${gbp(s.brrr.cfMonthly)}</td></tr>`).join("");
+  return `
+  <h2>Acquisition</h2>
+  <table class="tbl kv">${row("Purchase price", gbp(r.price))}
+    ${row(`SDLT (${S.cfg.purchaser})`, gbp(r.sdlt.tax) + `<small>${r.sdlt.lines.filter(l => l.tax).map(l => `${gbp(l.from)}–${gbp(l.to)} at ${pct(l.rate, 0)}`).join("; ") || "Nil"}</small>`)}
+    ${row("Legal and survey", gbp(S.cfg.acq.legal + S.cfg.acq.survey))}
+    ${r.auctionCosts ? row("Auction costs", gbp(r.auctionCosts)) : ""}
+    ${row("Total acquisition", gbp(r.acquisition), "sum")}</table>
+  ${r.sdlt.note ? `<p class="note">${esc(r.sdlt.note)}</p>` : ""}
+  <div class="duo">
+    <div class="col ${f.pass ? "ok" : "bad"}"><h2>Flip</h2><table class="tbl kv">
+      ${row("GDV (ARV)", gbp(f.gdv))}
+      ${row("Works, sell scope", gbp(f.works.total))}
+      ${row(`Bridge (${f.months.toFixed(1)} months)`, gbp(f.bridge.total) + `<small>loan ${gbp(f.bridge.L)}, interest ${gbp(f.bridge.interest)}, fees ${gbp(f.bridge.fees)}</small>`)}
+      ${row("Holding costs", gbp(f.holding))}
+      ${row("Sale costs", gbp(f.saleCosts))}
+      ${row("Total cost", gbp(f.totalCost), "sum")}
+      ${row("Profit before tax", gbp(f.profit), f.profit < 0 ? "neg sum" : "sum")}
+      ${row("Profit on GDV", pct(f.profitOnGdv) + ` <small>target ${pct(T.flipProfitOnGdv, 0)}</small>`, f.profitOnGdv < T.flipProfitOnGdv ? "neg" : "")}
+      ${row("Profit on cost", pct(f.profitOnCost) + ` <small>target ${pct(T.flipProfitOnCost, 0)}</small>`, f.profitOnCost < T.flipProfitOnCost ? "neg" : "")}
+      ${row("Cash invested", gbp(f.cashIn))}
+      ${row("Return on cash", pct(f.roce) + ` <small>${pct(f.roceAnnual)} annualised</small>`)}
+      ${row("Corporation tax (indicative)", gbp(f.tax) + `<small>Accountant to confirm trading vs investment treatment.</small>`)}
+      ${row("Profit after tax", gbp(f.profitAfterTax))}
+    </table><div class="mao"><span>Maximum offer (Flip)</span>${mao(mf)}</div></div>
+    <div class="col ${b.pass ? "ok" : "bad"}"><h2>BRRR</h2><table class="tbl kv">
+      ${row("Works, let scope", gbp(b.works.total))}
+      ${row(`Bridge (${b.months.toFixed(1)} months)`, gbp(b.bridge.total) + `<small>min. ownership ${S.cfg.refi.minOwnMonths} months applied</small>`)}
+      ${row("Holding costs", gbp(b.holding))}
+      ${row("Total cost to refinance", gbp(b.totalCost), "sum")}
+      ${row("Refinance valuation", gbp(b.refiVal) + `<small>ARV less ${pct(S.cfg.refi.haircut, 0)} prudence</small>`)}
+      ${row("New mortgage", gbp(b.newLoan) + `<small>${b.icrCapped ? "Limited by ICR (LTV would allow " + gbp(b.ltvLoan) + ")" : "LTV " + pct(S.cfg.refi.ltv, 0)}</small>`)}
+      ${row("Refinance costs", gbp(b.refiCosts))}
+      ${row("Money left in", gbp(b.leftIn) + ` <small>target ≤ ${gbp(T.brrrMaxLeftIn)}</small>`, b.leftIn > T.brrrMaxLeftIn ? "neg sum" : "sum")}
+      ${row("Rent (annual)", gbp(b.gross))}
+      ${row("Voids, management, maintenance, other", gbp(b.voids + b.mgmt + b.maint + b.other))}
+      ${row("Mortgage interest", gbp(b.interest))}
+      ${row("Cashflow", gbp(b.cfMonthly) + "/month" + ` <small>target ${gbp(T.brrrMinCashflow)}</small>`, b.cfMonthly < T.brrrMinCashflow ? "neg" : "")}
+      ${row("ICR at stress rate", b.icrActual.toFixed(2) + ` <small>required ${S.cfg.refi.icr}</small>`)}
+      ${row("Net yield on price", pct(b.netYield) + ` <small>target ${pct(T.brrrMinYield, 0)}</small>`, b.netYield < T.brrrMinYield ? "neg" : "")}
+      ${row("Return on money left in", b.leftIn > 0 ? pct(b.roi) : "Infinite (no money left in)")}
+    </table><div class="mao"><span>Maximum offer (BRRR)</span>${mao(mb)}</div></div>
+  </div>
+  <h2>Sensitivity</h2>
+  <div class="scroll"><table class="tbl sens"><thead><tr><th>Scenario</th><th>Flip profit</th><th>% GDV</th><th>BRRR left in</th><th>Cashflow /m</th></tr></thead><tbody>${sens}</tbody></table></div>
+  <p class="muted">Figures in brick miss a target.</p>`;
+}
+
+function stepVerdict() {
+  const d = deal();
+  const flags = RED_FLAGS.map(([k, label, crit, who]) => {
+    const f = d.flags[k] || {};
+    const st = f.status || "";
+    return `<div class="flag"><div class="flag-h"><b>${label}</b>${crit ? `<span class="crit">Critical</span>` : ""}<small>Verify: ${who}</small></div>
+      <div class="seg" role="radiogroup" aria-label="${esc(label)} status">${["Clear", "Suspected", "Confirmed"].map(s => `<button role="radio" aria-checked="${st === s}" class="fs fs-${s.toLowerCase()}" data-act="flag" data-k="${k}" data-s="${s}">${s}</button>`).join("")}</div>
+      ${st && st !== "Clear" ? `<div class="flag-f"><label><span>Mitigation cost £</span><input type="number" inputmode="decimal" data-flag="${k}" data-f="mitigation" value="${esc(f.mitigation)}"></label><label class="grow"><span>Note</span><input data-flag="${k}" data-f="note" value="${esc(f.note)}"></label></div>` : ""}
+    </div>`;
+  }).join("");
+  return `<h1>Red flags and verdict</h1><div data-calc="verdict"></div><h2>Red-flag screen</h2><p class="lede">Costed mitigations are added to both works scopes. A confirmed critical flag without a cost forces NO-GO.</p><div class="flags">${flags}</div>`;
+}
+
+function verdictHTML() {
+  const d = deal(), v = verdict(d, S.cfg);
+  const cls = { "GO": "go", "CONDITIONAL GO": "cond", "NO-GO": "nogo" }[v.verdict] || "inc";
+  const list = a => a.length ? `<ul>${a.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  return `<div class="verdict ${cls}"><div class="v-word">${v.verdict}</div><div><p>${esc(v.reason)}</p>${v.recommended && v.recommended !== "None" ? `<p>Recommended strategy: <b>${v.recommended}</b></p>` : ""}${list(v.blockers)}${v.conditions.length ? `<h3>Conditions</h3>${list(v.conditions)}` : ""}</div></div>
+  <h2>Next actions</h2>${list(nextActions(d, v)) || `<p class="muted">None flagged.</p>`}`;
+}
+
+function nextActions(d, v) {
+  const a = [];
+  for (const [k, label, , who] of RED_FLAGS) { const f = d.flags[k]; if (f?.status === "Suspected") a.push(`${who}: investigate ${label.toLowerCase()}`); }
+  const est = d.works.filter(w => w.include !== false && w.src === "EST");
+  if (est.length) a.push(`Get quotes for ${est.length} estimated item${est.length > 1 ? "s" : ""}, starting with ${est.slice(0, 3).map(w => w.item).join(", ")}`);
+  if (v.r?.cmp.arvConf === "Low") a.push("Add at least three recent refurbished comparables");
+  const unconf = VERIFY.filter(([k]) => !S.verify[k]?.ok);
+  if (unconf.length) a.push(`Confirm ${unconf.length} open item${unconf.length > 1 ? "s" : ""} in the Settings verification register`);
+  if (v.recommended === "BRRR" || v.recommended === "Either") a.push("Broker: confirm refinance LTV, ICR and minimum-ownership rule; get an Agreement in Principle");
+  if (d.property.route === "auction") a.push("Solicitor: review the legal pack and special conditions before bidding");
+  return a;
+}
+
+function stepReport() {
+  return `<h1>Report</h1><p class="lede">Export the full assessment. The JSON carries every input and result for import elsewhere later.</p>
+  <div class="add-row"><button class="btn primary" data-act="dl-md">Download report (.md)</button><button class="btn" data-act="dl-json">Download data (.json)</button><button class="btn" data-act="copy-md">Copy report</button></div>
+  <div data-calc="report"></div>`;
+}
+
+/* ===== Report ===== */
+function reportMD() {
+  const d = deal(), v = verdict(d, S.cfg), r = v.r, f = r.flip, b = r.brrr, p = d.property;
+  const t = (h, rows) => `| ${h.join(" | ")} |\n|${h.map(() => "---").join("|")}|\n${rows.map(x => `| ${x.join(" | ")} |`).join("\n")}\n`;
+  const g = deriveGrade(d.condition);
+  const mf = maxOffer(d, S.cfg, "flip"), mb = maxOffer(d, S.cfg, "brrr");
+  let md = `# BMV assessment: ${p.name || p.address || "Untitled"}\n\n_Generated ${new Date().toLocaleString("en-GB")} · rules as at ${S.cfg.asAt}_\n\n## 1. Deal snapshot\n\n`;
+  md += t(["Field", "Value"], [["Address", `${p.address || ""} ${p.postcode || ""}`], ["Type / beds / area", `${p.type}, ${p.beds}-bed, ${p.gia || "?"} m²`], ["Tenure", p.tenure + (p.tenure === "Leasehold" ? ` (${p.leaseYears || "?"} yrs)` : "")], ["Price", gbp(r.price)], ["As-is value", gbp(r.cmp.asIsValue) + ` (${r.cmp.asIsConf})`], ["BMV vs as-is", r.cmp.asIsValue ? pct((r.cmp.asIsValue - r.price) / r.cmp.asIsValue) : "—"], ["ARV", gbp(r.cmp.arv) + ` (${r.cmp.arvConf})`], ["Derived grade", g.grade], ["Standard", p.standard], ["Verdict", `**${v.verdict}**`], ["Recommended", v.recommended || "—"]]);
+  md += `\n## 2. Condition\n\n` + t(["Element", "Rating", "Note"], ELEMENTS.filter(([k]) => d.condition[k]?.cr).map(([k, l]) => [l, "CR" + d.condition[k].cr, d.condition[k].note || ""]));
+  md += `\n${g.rated} of ${g.total} elements rated; ${g.cr3} at CR3.\n\n## 3. Comparables\n\n` + t(["Address", "Sold", "Price", "Condition", "Adj %", "Weight"], d.comps.map(c => [c.addr || "", c.date || "", gbp(c.price), c.basis, c.adjPct || 0, c.weight ?? 1]));
+  md += `\n## 4. Works and costs (${S.cfg.costBasis} basis)\n\n` + t(["Item", "Category", "Std", "Qty", "Rate £", "Cost £", "Source", "Priority", "Reg ref", "Cert"], d.works.filter(w => w.include !== false).map(w => { const c = worksTotals(d, S.cfg, g.grade).cost(w); return [w.item, w.cat, w.std, `${w.qty} ${w.unit || ""}`, `${w.rMin}–${w.rMax}`, `${gbp(c.lo)}–${gbp(c.hi)}`, `[${w.src}]`, w.priority, w.reg || "", w.cert || ""]; }));
+  md += `\n| Scope | Construction | Contingency | Professional | Total |\n|---|---|---|---|---|\n| Sell | ${gbp(f.works.construction)} | ${gbp(f.works.contingency)} | ${gbp(f.works.professional)} | ${gbp(f.works.total)} |\n| Let | ${gbp(b.works.construction)} | ${gbp(b.works.contingency)} | ${gbp(b.works.professional)} | ${gbp(b.works.total)} |\n`;
+  md += `\n## 5. Flip vs BRRR\n\n` + t(["Measure", "Flip", "BRRR"], [["Total cost", gbp(f.totalCost), gbp(b.totalCost)], ["Months", f.months.toFixed(1), b.months.toFixed(1)], ["Profit / money left in", gbp(f.profit), gbp(b.leftIn)], ["% GDV / cashflow pcm", pct(f.profitOnGdv), gbp(b.cfMonthly)], ["Return", pct(f.roceAnnual) + " annualised", b.leftIn > 0 ? pct(b.roi) : "Infinite"], ["Maximum offer", mf.value ? gbp(mf.value) : mf.reason, mb.value ? gbp(mb.value) : mb.reason], ["Pass", f.pass ? "Yes" : "No", b.pass ? "Yes" : "No"]]);
+  md += `\nSDLT: ${gbp(r.sdlt.tax)} (${S.cfg.purchaser}). Indicative corporation tax on flip: ${gbp(f.tax)}. Accountant to confirm.\n\n### Sensitivity\n\n` + t(["Scenario", "Flip profit", "% GDV", "BRRR left in", "Cashflow pcm"], sensitivity(d, S.cfg).map(s => [s.label, gbp(s.flip.profit), pct(s.flip.profitOnGdv), gbp(s.brrr.leftIn), gbp(s.brrr.cfMonthly)]));
+  md += `\n## 6. Red flags\n\n` + t(["Flag", "Status", "Mitigation", "Note"], RED_FLAGS.filter(([k]) => d.flags[k]?.status).map(([k, l]) => [l, d.flags[k].status, d.flags[k].mitigation ? gbp(d.flags[k].mitigation) : "", d.flags[k].note || ""]));
+  md += `\n**Verdict: ${v.verdict}.** ${v.reason}\n\n${[...v.blockers, ...v.conditions].map(c => `- ${c}`).join("\n")}\n\n## 7. Assumptions\n\n- Finance, targets and holding costs from Settings as at ${S.cfg.asAt}.\n- Rate library items marked [RATE] are illustrative unless replaced with validated rates.\n- [EST] items are estimates and unvalidated.\n\n## 8. Verification register\n\n` + t(["Item", "Confirm with", "Status"], VERIFY.map(([k, l, w]) => [l, w, S.verify[k]?.ok ? `Confirmed ${S.verify[k].date}` : "Open"]));
+  md += `\n## 9. Next actions\n\n${nextActions(d, v).map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\n_Illustrative appraisal only. Not legal, tax, survey or financial advice. Verify all flagged items with qualified professionals before committing funds._\n`;
+  return md;
+}
+
+/* ===== Rates & settings ===== */
+function viewRates() {
+  const rows = S.rates.map((r, i) => `<tr>
+    <td><input data-r="${i}" data-f="item" value="${esc(r.item)}" aria-label="Item"></td>
+    <td><input data-r="${i}" data-f="unit" value="${esc(r.unit)}" class="sm" aria-label="Unit"></td>
+    <td><input type="number" inputmode="decimal" data-r="${i}" data-f="min" value="${esc(r.min)}" class="sm" aria-label="Min"></td>
+    <td><input type="number" inputmode="decimal" data-r="${i}" data-f="max" value="${esc(r.max)}" class="sm" aria-label="Max"></td>
+    <td><input data-r="${i}" data-f="source" value="${esc(r.source)}" aria-label="Source"></td>
+    <td><input data-r="${i}" data-f="date" value="${esc(r.date)}" class="sm" aria-label="Date"></td>
+    <td><button class="icon-btn" data-act="del-rate" data-i="${i}" aria-label="Remove rate">Remove</button></td></tr>`).join("");
+  const illus = S.rates.filter(r => r.source === RATE_SRC).length;
+  return `<section class="page"><div class="page-head"><h1>Rate library</h1><div class="add-row"><button class="btn" data-act="add-rate">Add rate</button><button class="btn" data-act="reset-rates">Reset to seed</button></div></div>
+  ${illus ? `<p class="note">${illus} of ${S.rates.length} rates are illustrative North West figures and not validated. Replace them with your mentor's or contractors' rates, and update the source and date.</p>` : ""}
+  <div class="scroll"><table class="tbl rates"><thead><tr><th>Item</th><th>Unit</th><th>Min £</th><th>Max £</th><th>Source</th><th>Date</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+
+function viewSettings() {
+  const f = (l, p, o = {}) => field(l, p, { src: "cfg", ...o });
+  const reg = VERIFY.map(([k, l, w]) => `<label class="ver"><input type="checkbox" data-verify="${k}" ${S.verify[k]?.ok ? "checked" : ""}><span><b>${l}</b><small>Confirm with ${w}${S.verify[k]?.ok ? " · confirmed " + S.verify[k].date : ""}</small></span></label>`).join("");
+  return `<section class="page"><h1>Settings</h1><p class="lede">Defaults are illustrative. Set them to your own targets and current terms.</p>
+  <h2>General</h2><div class="grid">${f("Rules verified as at", "asAt", { t: "date" })}${f("Purchaser for SDLT", "purchaser", { options: [["company", "Company (higher rates)"], ["additional", "Individual, additional dwelling"], ["single", "Individual, only property"]] })}</div>
+  <h2>Targets</h2><div class="grid">${f("Flip profit on GDV", "targets.flipProfitOnGdv", { t: "pct" })}${f("Flip profit on cost", "targets.flipProfitOnCost", { t: "pct" })}${f("BRRR max money left in", "targets.brrrMaxLeftIn", { t: "num", pre: "£" })}${f("BRRR min cashflow", "targets.brrrMinCashflow", { t: "num", pre: "£", suf: "pcm" })}${f("BRRR min net yield", "targets.brrrMinYield", { t: "pct" })}</div>
+  <h2>Refurb grade</h2><div class="grid">${f("Contingency, light", "contingency.light", { t: "pct" })}${f("Contingency, medium", "contingency.medium", { t: "pct" })}${f("Contingency, heavy", "contingency.heavy", { t: "pct" })}${f("Programme, light", "programmeWeeks.light", { t: "num", suf: "wks" })}${f("Programme, medium", "programmeWeeks.medium", { t: "num", suf: "wks" })}${f("Programme, heavy", "programmeWeeks.heavy", { t: "num", suf: "wks" })}</div>
+  <h2>Acquisition and holding</h2><div class="grid">${f("Legal", "acq.legal", { t: "num", pre: "£" })}${f("Survey", "acq.survey", { t: "num", pre: "£" })}${f("Council tax", "holding.councilTaxMonthly", { t: "num", pre: "£", suf: "pcm" })}${f("Insurance (unoccupied)", "holding.insuranceMonthly", { t: "num", pre: "£", suf: "pcm" })}${f("Utilities", "holding.utilitiesMonthly", { t: "num", pre: "£", suf: "pcm" })}</div>
+  <h2>Bridging</h2><div class="grid">${f("Monthly rate", "bridge.monthlyRate", { t: "pct" })}${f("LTV on purchase", "bridge.ltv", { t: "pct" })}${f("Works funded", "bridge.worksFunded", { t: "pct" })}${f("Arrangement fee", "bridge.arrFee", { t: "pct" })}${f("Exit fee", "bridge.exitFee", { t: "pct" })}${f("Broker fee", "bridge.brokerFee", { t: "pct" })}${f("Valuation", "bridge.valuation", { t: "num", pre: "£" })}${f("Lender legal", "bridge.legal", { t: "num", pre: "£" })}</div>
+  <h2>Refinance</h2><div class="grid">${f("LTV", "refi.ltv", { t: "pct" })}${f("Valuation prudence", "refi.haircut", { t: "pct" })}${f("Pay rate", "refi.payRate", { t: "pct" })}${f("Stress rate", "refi.stressRate", { t: "pct" })}${f("ICR required", "refi.icr", { t: "num" })}${f("Minimum ownership", "refi.minOwnMonths", { t: "num", suf: "months" })}${f("Product fee", "refi.productFee", { t: "pct" })}${f("Valuation", "refi.valuation", { t: "num", pre: "£" })}${f("Legal", "refi.legal", { t: "num", pre: "£" })}${f("Refinance process", "refi.processMonths", { t: "num", suf: "months" })}</div>
+  <h2>Letting and sale</h2><div class="grid">${f("Voids", "letting.voids", { t: "pct" })}${f("Management (+VAT)", "letting.mgmt", { t: "pct" })}${f("Maintenance", "letting.maint", { t: "pct" })}${f("Landlord insurance", "letting.insuranceAnnual", { t: "num", pre: "£", suf: "yr" })}${f("Months to let", "letting.monthsToLet", { t: "num" })}${f("Agent fee (+VAT)", "sale.agentPct", { t: "pct" })}${f("Sale conveyancing", "sale.conveyancing", { t: "num", pre: "£" })}${f("Months to sell", "sale.monthsToSell", { t: "num" })}</div>
+  <h2>Verification register</h2><p class="lede">Tick each item once you've confirmed it is current. Open items appear in every report.</p><div class="vers">${reg}</div></section>`;
+}
+
+/* ===== AI drafting ===== */
+function aiPrompt(d) {
+  const lib = S.rates.map(r => `${r.key} | ${r.item} | ${r.unit}`).join("\n");
+  const cond = ELEMENTS.filter(([k]) => d.condition[k]?.cr).map(([k, l]) => `${l}: CR${d.condition[k].cr}${d.condition[k].note ? " (" + d.condition[k].note + ")" : ""}`).join("\n") || "No elements rated.";
+  return `You are a UK residential quantity surveyor and PRS compliance specialist working in England. Draft the works checklist needed to bring this property to the selected standard.
+
+STANDARDS
+SELL = mortgageable and habitable: no CR3 defects a lender valuer would retain against; Building Regs sign-off for notifiable works (Part P electrics, Gas Safe boiler, FENSA/Certass windows, Part A structural, Part L thermal elements, Part F ventilation, Part B fire, Part K guarding).
+LET = everything in SELL plus PRS compliance: Gas Safety Record; EICR with C1/C2/FI remedied; smoke alarm each storey and CO alarm where fixed combustion appliance; MEES minimum EPC; no HHSRS Category 1 hazards (damp and mould, excess cold, falls, fire, electrical); Decent Homes Standard / Awaab's Law as applicable.
+Selected standard: ${d.property.standard}. Tag each item std SELL (needed to sell, also needed to let), LET (needed only to let) or BOTH. Use BOTH for most physical works; LET for PRS-only items like EICR/gas certificates and HHSRS-only upgrades.
+
+RULES
+- Only include items triggered by a condition finding, the property facts, or the selected standard. No generic padding.
+- Quantities: derive from floor area (${d.property.gia || "unknown"} m²), ${d.property.beds} beds, property type. If area unknown assume ${d.property.beds === "3" ? 80 : 65} m² GIA and say so in desc.
+- Pricing: if a rate library key fits, set rateKey to it and leave estMin/estMax 0. Otherwise set rateKey null and give estMin/estMax as a per-unit rate range in GBP for North West England.
+- Categories must be one of: ${CATS.join("; ")}.
+- Priority must be one of: Critical (safety, legal, mortgage/letting blocker), Required (needed for the standard), Value-add, Optional.
+- reg: cite the regulation or standard briefly. cert: certificate or sign-off produced, or "".
+- Flags: suggest red flags from this list only where the facts give reason to suspect them: ${RED_FLAGS.map(f => f[0]).join(", ")}.
+
+PROPERTY
+${JSON.stringify({ type: d.property.type, beds: d.property.beds, gia: d.property.gia, tenure: d.property.tenure, leaseYears: d.property.leaseYears, construction: d.property.construction, era: d.property.era, epc: d.property.epc, heating: d.property.heating, route: d.property.route, notes: d.property.notes })}
+
+CONDITION (RICS ratings)
+${cond}
+
+RATE LIBRARY (key | item | unit)
+${lib}
+
+Reply with JSON only, no other text:
+{"works":[{"item":"","cat":"","desc":"","std":"SELL|LET|BOTH","qty":1,"unit":"","rateKey":null,"estMin":0,"estMax":0,"priority":"","reg":"","cert":""}],"flags":[{"key":"","note":""}],"summary":"two sentences on scope and main risks"}`;
+}
+
+async function aiDraft() {
+  const d = deal(); if (!S.sample || S.aiBusy) return;
+  S.aiBusy = true; S.aiMsg = "Thinking… this usually takes 20–60 seconds."; S.aiCtl = new AbortController(); render();
+  try {
+    const res = await S.sample.json(aiPrompt(d), { signal: S.aiCtl.signal, modelTier: "default", cache: false });
+    const works = Array.isArray(res?.works) ? res.works : [];
+    const lib = Object.fromEntries(S.rates.map(r => [r.key, r]));
+    const drafted = works.map(w => {
+      const r = w.rateKey && lib[w.rateKey];
+      return {
+        id: uid(), ai: true, include: true, item: String(w.item || "Untitled item"), cat: CATS.includes(w.cat) ? w.cat : (r?.cat || CATS[0]),
+        desc: String(w.desc || ""), std: ["SELL", "LET", "BOTH"].includes(w.std) ? w.std : "BOTH", qty: +w.qty || 1, unit: w.unit || r?.unit || "item",
+        rMin: r ? r.min : +w.estMin || 0, rMax: r ? r.max : +w.estMax || +w.estMin || 0, src: r ? "RATE" : "EST", rateKey: r ? r.key : null,
+        priority: PRIORITIES.includes(w.priority) ? w.priority : "Required", reg: String(w.reg || ""), cert: String(w.cert || "")
+      };
+    });
+    d.works = [...d.works.filter(w => !w.ai || w.edited), ...drafted];
+    const keys = RED_FLAGS.map(f => f[0]);
+    for (const fl of (res?.flags || [])) {
+      if (!keys.includes(fl.key)) continue;
+      if (!d.flags[fl.key]?.status) d.flags[fl.key] = { status: "Suspected", note: "Claude: " + (fl.note || "") };
+    }
+    d.aiSummary = res?.summary ? String(res.summary) : "";
+    S.aiMsg = `Drafted ${drafted.length} items. Review quantities and sources before relying on totals.`;
+    saveDeal(d);
+  } catch (e) {
+    const m = { cancelled: "Drafting stopped.", not_granted: "Claude access wasn't allowed, so drafting is off for this visit. Add items manually.", rate_limited: "Too many requests just now. Wait a minute, then try again.", invalid_json: "Claude's reply couldn't be read. Try drafting again.", prompt_too_large: "Too much data to send. Shorten the notes, then try again." };
+    S.aiMsg = m[e?.code] || "Drafting failed. Try again, or add items manually.";
+    if (e?.code === "not_granted") S.sample = null;
+  } finally { S.aiBusy = false; S.aiCtl = null; render(); }
+}
+
+/* ===== Downloads ===== */
+async function download(filename, data) {
+  if (S.downloads) {
+    try { await S.downloads.save({ filename, data }); toast("Downloaded " + filename); return; }
+    catch (e) { if (e?.code === "declined") return; }
+  }
+  try { await navigator.clipboard.writeText(data); toast("Download isn't available here, so the content was copied instead."); }
+  catch { toast("Download isn't available here. Use Copy report instead."); }
+}
+const slug = d => (d.property.name || d.property.address || "deal").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 40);
+
+/* ===== Events ===== */
+document.addEventListener("click", e => {
+  const nav = e.target.closest("[data-nav]");
+  if (nav && !nav.disabled) { S.view = nav.dataset.nav; render(); window.scrollTo(0, 0); return; }
+  const st = e.target.closest("[data-step]");
+  if (st) { S.step = st.dataset.step; S.aiMsg = S.aiBusy ? S.aiMsg : ""; render(); window.scrollTo(0, 0); return; }
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act, d = deal();
+  switch (act) {
+    case "new-deal": { const n = newDeal(); S.deals[n.id] = n; S.currentId = n.id; S.view = "assess"; S.step = "property"; saveDeal(n); render(); break; }
+    case "open": S.currentId = b.dataset.id; S.view = "assess"; S.step = "property"; render(); break;
+    case "del-deal": {
+      const x = S.deals[b.dataset.id];
+      if (!confirm(`Delete "${x.property.name || x.property.address || "Untitled deal"}"? This can't be undone.`)) return;
+      delete S.deals[b.dataset.id]; if (S.currentId === b.dataset.id) S.currentId = null;
+      removeDoc(b.dataset.id).catch(() => toast("Couldn't delete from storage. Try again."));
+      render(); break;
+    }
+    case "add-comp": d.comps.push({ addr: "", date: "", price: "", basis: "as-is", adjPct: 0, weight: 1 }); saveDeal(d); render(); break;
+    case "del-comp": d.comps.splice(+b.dataset.i, 1); saveDeal(d); render(); break;
+    case "cr": {
+      const k = b.dataset.el, n = +b.dataset.n; const c = d.condition[k] = d.condition[k] || {};
+      c.cr = c.cr === n ? null : n; saveDeal(d);
+      b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-checked", String(+x.dataset.n === c.cr)));
+      refreshCalc(); break;
+    }
+    case "flag": { const k = b.dataset.k, s = b.dataset.s; d.flags[k] = { ...(d.flags[k] || {}), status: d.flags[k]?.status === s ? "" : s }; saveDeal(d); render(); break; }
+    case "add-w": d.works.push({ id: uid(), include: true, item: "", cat: CATS[0], std: "BOTH", qty: 1, unit: "item", rMin: 0, rMax: 0, src: "USER", priority: "Required", reg: "", cert: "", desc: "" }); saveDeal(d); render(); break;
+    case "del-w": d.works.splice(+b.dataset.i, 1); saveDeal(d); render(); break;
+    case "ai-draft": aiDraft(); break;
+    case "ai-stop": S.aiCtl?.abort(); break;
+    case "add-rate": S.rates.push({ key: "custom_" + uid(), item: "", unit: "item", min: 0, max: 0, cat: CATS[0], source: "", date: new Date().toISOString().slice(0, 7) }); saveRates(); render(); break;
+    case "del-rate": S.rates.splice(+b.dataset.i, 1); saveRates(); render(); break;
+    case "reset-rates": if (confirm("Replace your rate library with the illustrative seed rates?")) { S.rates = structuredClone(SEED_RATES); saveRates(); render(); } break;
+    case "dl-md": download(`bmv-${slug(d)}.md`, reportMD()); break;
+    case "dl-json": { const v = verdict(d, S.cfg); download(`bmv-${slug(d)}.json`, JSON.stringify({ deal: d, settings: S.cfg, results: { appraisal: v.r, verdict: v.verdict, recommended: v.recommended, conditions: v.conditions, blockers: v.blockers, maxOffer: { flip: maxOffer(d, S.cfg, "flip"), brrr: maxOffer(d, S.cfg, "brrr") } } }, (k, val) => val === Infinity ? "Infinity" : val, 2)); break; }
+    case "copy-md": navigator.clipboard.writeText(reportMD()).then(() => toast("Report copied"), () => toast("Couldn't copy. Select the text below instead.")); break;
+  }
+});
+
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "rate-pick" && el.value) {
+    const r = S.rates.find(x => x.key === el.value), d = deal();
+    d.works.push({ id: uid(), include: true, item: r.item, cat: r.cat || CATS[0], std: "BOTH", qty: 1, unit: r.unit, rMin: r.min, rMax: r.max, src: "RATE", rateKey: r.key, priority: "Required", reg: "", cert: "", desc: "" });
+    saveDeal(d); render(); return;
+  }
+  if (el.dataset.verify) {
+    S.verify[el.dataset.verify] = el.checked ? { ok: true, date: new Date().toLocaleDateString("en-GB") } : { ok: false };
+    saveCfg(); render(); return;
+  }
+  // selects that change layout
+  if (el.dataset.k && ["property.tenure", "property.route"].includes(el.dataset.k)) { onInput(e); render(); }
+  if (el.dataset.w !== undefined && el.dataset.f === "include") { onInput(e); render(); }
+});
+
+function onInput(e) {
+  const el = e.target, d = deal();
+  if (el.dataset.k) {
+    const obj = el.dataset.src === "cfg" ? S.cfg : d;
+    set(obj, el.dataset.k, readVal(el));
+    el.dataset.src === "cfg" ? saveCfg() : saveDeal(d);
+  } else if (el.dataset.comp !== undefined) {
+    const c = d.comps[+el.dataset.comp]; c[el.dataset.f] = el.type === "number" ? el.value : el.value; saveDeal(d);
+  } else if (el.dataset.cnote) {
+    (d.condition[el.dataset.cnote] = d.condition[el.dataset.cnote] || {}).note = el.value; saveDeal(d); return;
+  } else if (el.dataset.w !== undefined) {
+    const w = d.works[+el.dataset.w]; const f = el.dataset.f;
+    w[f] = el.type === "checkbox" ? el.checked : el.value; w.edited = true;
+    const costEl = el.closest(".wk")?.querySelector(".wk-cost");
+    if (costEl) { const c = worksTotals(d, S.cfg, deriveGrade(d.condition).grade).cost(w); costEl.textContent = `${gbp(c.lo)} – ${gbp(c.hi)}`; }
+    saveDeal(d);
+  } else if (el.dataset.flag) {
+    d.flags[el.dataset.flag][el.dataset.f] = el.value; saveDeal(d);
+  } else if (el.dataset.r !== undefined) {
+    const r = S.rates[+el.dataset.r]; r[el.dataset.f] = el.type === "number" ? parseFloat(el.value) || 0 : el.value; saveRates(); return;
+  } else return;
+  refreshCalc();
+}
+document.addEventListener("input", e => { if (e.target.tagName !== "SELECT") onInput(e); });
+document.addEventListener("change", e => { if (e.target.tagName === "SELECT" && !(e.target.dataset.k && ["property.tenure", "property.route"].includes(e.target.dataset.k)) && e.target.id !== "rate-pick") onInput(e); });
+
+/* ===== Boot ===== */
+render();
+(async () => {
+  await initStore();
+  render();
+  if (!window.claude?.use) return;
+  claude.use("sample").then(s => { S.sample = s; if (S.view === "assess" && S.step === "works") render(); });
+  claude.use("downloads").then(dl => { S.downloads = dl; });
+})();
+</script>
+</body>
+</html>

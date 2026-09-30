@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/legalPacks/{allPaths=**} {
+      allow read: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email == "paul.a.adeogun@gmail.com";
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email == "paul.a.adeogun@gmail.com"
+        && request.resource.size < 40 * 1024 * 1024
+        && request.resource.contentType == "application/pdf";
+      allow delete: if request.auth != null
+        && request.auth.uid == userId
+        && request.auth.token.email == "paul.a.adeogun@gmail.com";
+    }
+  }
+}

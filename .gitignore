@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+dist/
+
+# Firebase CLI cache
+.firebase/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Development session artifacts
+*.diff
+tree.txt
+update-dealsdash.bat
+APP_JSX_EDITS.md
+UPDATE_STEPS.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
