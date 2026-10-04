@@ -9,7 +9,7 @@ import {
   RotateCcw, Info, MapPin, LogOut, Sparkles, Radar, ExternalLink, RefreshCw,
   ArrowRightCircle, ShieldCheck, Users, Phone, Mail, Star, KeyRound, FileWarning,
   Banknote, Calendar, ClipboardCheck, FileText, Upload, BookMarked, RefreshCcw, CreditCard,
-  GripVertical, Layers, ChevronRight, FileDown, Bell, Map,
+  GripVertical, Layers, ChevronRight, FileDown, Bell, Map, BookOpen,
 } from "lucide-react";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SOURCING_STAGES, TERMINAL_STAGES, STAGE_COLORS, LEAD_STATUS_TO_STAGE, GATED_STAGES } from "./lib/pipeline.js";
@@ -34,6 +34,8 @@ import { defaultRates } from "./modules/survey/data/rates.js";
 import { mergeRefurbItems } from "./modules/survey/lib/applyToDeal.js";
 import { Badge as VxBadge } from "./components/Badge.jsx";
 import WorkspaceView from "./components/WorkspaceView.jsx";
+import ScreenerView from "./components/ScreenerView.jsx";
+import UserGuideView from "./components/UserGuideView.jsx";
 
 /* =================================================================================
    FIREBASE — Google Sign-In gated to one account, Firestore for cross-device sync
@@ -142,6 +144,14 @@ function calcSelling(gdv, eaPct, solicitor, epc) {
   return round2(gdv * (Number(eaPct) || 0) + (Number(solicitor) || 0) + (Number(epc) || 0));
 }
 
+// Full deal appraisal: builds every financial metric shown across the deal tabs.
+// Called on every render — no caching — so always reflects the latest inputs.
+// totalCost = price + SDLT + fees + refurb + holding (ex-bridge) + bridge + selling costs.
+// netProfit = GDV − totalCost.
+// roi = netProfit / ownCash (return on own cash deployed).
+// annualisedRoi = roi × (12 / timeline.months) — normalises for deal duration.
+// noi = net operating income for BRRR (rent after voids, management, maintenance, insurance).
+// cashLeftIn = money not recovered after BTL refinance (BRRR quality metric; 0 is ideal).
 function appraiseDeal(deal) {
   const funding = calcFunding(deal);
   const timeline = calcTimeline(deal.phases);
@@ -187,6 +197,10 @@ function appraiseDeal(deal) {
    override is set (an override is already a deliberate single figure — there's
    no separate "low" version of a number the user typed in directly).
    ================================================================================= */
+// Conservative GDV used exclusively by the max bid solver.
+// Uses 25th-percentile £/sq ft from the comp distribution (the low end of the market range)
+// rather than the average, giving a more conservative ceiling for the maximum bid.
+// If a manual GDV override is set, that figure is already deliberate — no separate "low" applies.
 function calcGDVLow(deal) {
   if (deal.gdvOverride && Number(deal.gdvOverride) > 0) return round2(Number(deal.gdvOverride));
   const dist = compPsfDistribution(deal.comps);
@@ -235,6 +249,10 @@ function calcRiskScore(factors) {
   return { score: round2(score), rating };
 }
 
+// Quick deal-list verdict (PROCEED / CAUTION / REJECT) based on six checks against thresholds.
+// Different from the Decision Brief's BUY/WATCH/PASS — this simpler version is used on
+// the deals list and Dashboard summary cards.
+// 0 fails → PROCEED; 1–2 fails → CAUTION; 3+ fails → REJECT.
 function verdictForDeal(deal, appraisal, thresholds) {
   const risk = calcRiskScore(deal.riskFactors);
   const checks = [
@@ -253,6 +271,10 @@ function verdictForDeal(deal, appraisal, thresholds) {
 
 const ACTIVE_STATUSES = ["Under Offer", "Refurbishment", "Marketing"];
 
+// Aggregates all deals and the capital ledger into the portfolio-level health metrics
+// displayed on the Dashboard and Risk Exposure tabs.
+// Active statuses: Under Offer, Refurbishment, Marketing.
+// Sold deals contribute realised profit to the capital base but not committed cash.
 function portfolioSummary(deals, ledger, settings) {
   const appraised = deals.map((d) => ({ deal: d, a: appraiseDeal(enrichDeal(d)) }));
   const active = appraised.filter(({ deal }) => ACTIVE_STATUSES.includes(deal.status));
@@ -804,7 +826,9 @@ function Sidebar({ tab, setTab, onNav, isDesktop, user, notifUnreadCount = 0 }) 
     { id: "risk",           label: "Risk exposure",     icon: ShieldAlert },
     { id: "contacts",       label: "Contacts",          icon: Users },
     { id: "properties",     label: "Properties",        icon: KeyRound },
+    { id: "screener",       label: "Area Screener",     icon: Radar },
     { id: "notifications",  label: "Notifications",     icon: Bell },
+    { id: "guide",          label: "User Guide",        icon: BookOpen },
   ];
   return (
     <nav
@@ -2974,8 +2998,8 @@ const SIGNAL_LABELS = { late_entry: "Late entry to market", no_viewings: "No vie
 
 // Q1–Q3 and the two explicit deal-killers (liquid12m, areaStrong) gate the lead —
 // any "no" fails it outright. Q4–Q6 are informational only: they affect whether
-// the result reads as complete, but a "no" there alone never fails a lead, since
-// the brief calls them informational rather than deal-killers.
+// the result reads as complete, but a "no" there alone never fails a lead.
+// The Decision Brief's evaluateDecision() mirrors these gating rules on the deal side.
 const TRIAGE_QUESTIONS = [
   { key: "areaKnown", label: "Do you know this area well?", gating: true, failText: "Area not known well enough" },
   { key: "assetTypeFits", label: "Does the asset type fit your strategy?", gating: true, failText: "Asset type does not fit" },
@@ -3250,6 +3274,8 @@ function newLead() {
     address: "",
     postcode: "",
     propertyType: "Terrace",
+    bedrooms: 0,
+    availabilityConfirmed: false,
     source: "",
     sourceUrl: "",
     guidePrice: 0,
@@ -4001,7 +4027,7 @@ function PipelineKanban({ leads, onMoveLead, openLeadId, onOpenLead, onPromote, 
   );
 }
 
-function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, marketStats }) {
+function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, marketStats, targetAreas = [], onClearTargetAreas }) {
   const [filter, setFilter] = useState("all");
   const [verifyingId, setVerifyingId] = useState(null);
   const [verifyError, setVerifyError] = useState(null);
@@ -4122,6 +4148,20 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
           <Plus size={16} />New lead
         </button>
       </div>
+
+      {targetAreas.length > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-vx-muted uppercase tracking-wide">Target areas from Screener:</span>
+            {targetAreas.map(a => (
+              <span key={a.code} className="inline-flex items-center gap-1 bg-vx-surface border border-vx-border rounded-full px-2.5 py-0.5 text-xs font-medium text-vx-text">
+                {a.name}
+              </span>
+            ))}
+            <button onClick={onClearTargetAreas} className="ml-auto text-xs text-vx-muted hover:text-vx-danger cursor-pointer bg-transparent border-0">Clear all</button>
+          </div>
+        </Card>
+      )}
 
       <Card className="space-y-4">
         <SectionTitle icon={Sparkles}>AI research pass</SectionTitle>
@@ -4611,6 +4651,7 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
             <TextField label="Address" value={lead.address} onChange={(v) => set("address", v)} testId={`lead-address-${lead.id}`} />
             <TextField label="Postcode" value={lead.postcode} onChange={(v) => set("postcode", v)} placeholder="e.g. OL1 4RL, G1 1AA, CF10 1EP" testId={`lead-postcode-${lead.id}`} />
             <SelectField label="Property type" value={lead.propertyType} onChange={(v) => set("propertyType", v)} options={["Terrace", "Semi", "Detached", "Flat"]} />
+            <NumField label="Bedrooms" value={lead.bedrooms || 0} onChange={(v) => set("bedrooms", v)} prefix="" />
             <SelectField label="Listing type" value={lead.listingType} onChange={(v) => set("listingType", v)} options={LISTING_TYPES} testId={`lead-listingtype-${lead.id}`} />
             <SelectField label="Seller type" value={lead.sellerType} onChange={(v) => set("sellerType", v)} options={SELLER_TYPES} />
             <TextField label="Source" value={lead.source} onChange={(v) => set("source", v)} placeholder="e.g. EIG Property Auctions" />
@@ -5341,6 +5382,14 @@ function AppInner({ user }) {
   const [tab, setTab] = useState("dashboard");
   const [selectedId, setSelectedId] = useState(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState(null);
+  // Screener → Sourcing target areas (session-only, not persisted)
+  const [targetAreas, setTargetAreas] = useState([]);
+  function addTargetAreas(areas) {
+    setTargetAreas(prev => {
+      const existing = new Set(prev.map(a => a.code));
+      return [...prev, ...areas.filter(a => !existing.has(a.code))];
+    });
+  }
 
   // Stale-closure refs so debounced callbacks always read the latest entity
   const dealsStateRef = useRef([]);
@@ -5635,7 +5684,8 @@ function AppInner({ user }) {
         <main className="flex-1 overflow-x-hidden" style={{ padding: isDesktop ? 24 : 14 }}>
           {!storageOk && <StorageWarning />}
           {tab === "dashboard" && <DashboardView deals={deals} ledger={ledger} properties={properties} settings={settings} thresholds={effectiveThresholds} goToDeals={() => setTab("deals")} goToRisk={() => setTab("risk")} goToProperties={() => setTab("properties")} />}
-          {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} />}
+          {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} />}
+          {tab === "screener" && <ScreenerView settings={settings} onSettingsChange={applySettings} onAddTargetAreas={addTargetAreas} />}
           {tab === "deals" && !selectedDeal && <DealsListView deals={deals} thresholds={effectiveThresholds} onSelect={setSelectedId} onAdd={addDeal} onAddExample={addExampleDeal} onDelete={deleteDeal} marketStats={marketStats} />}
           {tab === "deals" && selectedDeal && <DealDetailView deal={selectedDeal} onChange={(p) => updateDeal(selectedDeal.id, p)} onDelete={deleteDeal} onBack={() => setSelectedId(null)} thresholds={effectiveThresholds} defaultBuyBox={defaultBuyBox} settings={settings} onMoveToRental={() => moveDealToRentalManagement(selectedDeal)} alreadyLinkedProperty={properties.find((p) => p.dealId === selectedDeal.id)} ownerUid={user.uid} surveyRates={settings.surveyRates} onSurveyRatesChange={(surveyRates) => applySettings({ ...settings, surveyRates })} marketStats={marketStats} />}
           {tab === "playbooks" && <PlaybooksView buyBoxes={buyBoxes} onBuyBoxesChange={(newBoxes) => syncBuyBoxes(newBoxes, buyBoxes)} onBuyBoxFiltersChange={saveBuyBoxFilters} leads={leads} deals={deals} />}
@@ -5646,6 +5696,7 @@ function AppInner({ user }) {
           {tab === "properties" && !selectedProperty && <PropertiesListView properties={properties} deals={deals} onSelect={setSelectedPropertyId} onAdd={addProperty} onDelete={deleteProperty} />}
           {tab === "properties" && selectedProperty && <PropertyDetailView property={selectedProperty} linkedDeal={deals.find((d) => d.id === selectedProperty.dealId)} onChange={(p) => updateProperty(selectedProperty.id, p)} onDelete={deleteProperty} onBack={() => setSelectedPropertyId(null)} />}
           {tab === "notifications" && <NotificationsView notifications={notifications} onMarkRead={markNotificationRead} onMarkAllRead={markAllNotificationsRead} settings={settings} onSettingsChange={applySettings} onGoToDeal={(id) => { setTab("deals"); setSelectedId(id); }} onGoToLead={() => setTab("sourcing")} />}
+          {tab === "guide" && <UserGuideView />}
           <_AttributionFooter />
         </main>
       )}

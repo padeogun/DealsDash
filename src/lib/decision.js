@@ -4,11 +4,14 @@
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
 
+// These defaults are overridden by the active buy box's assumptions when a deal
+// has one. They represent sensible starting values for a UK flip/BRRR strategy
+// at a £25k minimum profit level.
 export const DEFAULT_DECISION_RULES = {
   minProfitOnCostPct: 0.15,   // net profit / totalCost ≥ 15%
   minNetProfitGBP:    25000,  // absolute minimum net profit
   maxMoneyLeftInGBP:  0,      // BRRR: max cash not recovered after refi (0 = no limit)
-  icrThreshold:       1.25,   // minimum ICR ratio
+  icrThreshold:       1.25,   // minimum ICR ratio (most lenders; stress at 1.45 as reference)
   requireGateComplete:true,   // all gating questions must be answered for BUY
 };
 
@@ -48,7 +51,9 @@ export function resolveRules(buyBox) {
 
 // ── Decision evaluation ───────────────────────────────────────────────────────
 
-// Gating keys checked against triage (lead data, optional)
+// Q1, Q2, Q3, Q7, Q8 from the triage checklist are gating — a single 'No' forces PASS.
+// Q4–Q6 (sellerMotivated, guideSensible, valueAddClear) are informational only and
+// affect WATCH completeness but never cause an outright PASS on their own.
 const GATING_KEYS = ["areaKnown", "assetTypeFits", "conditionAddsValue", "liquid12m", "areaStrong"];
 const GATING_LABELS = {
   areaKnown:         "Area not known well enough",
@@ -58,7 +63,8 @@ const GATING_LABELS = {
   areaStrong:        "Area isn't strong enough",
 };
 
-// evaluateDecision({ appraisal, icrResult, fundingBrrr, triage, buyBoxGate, rules, deal })
+// Three-tier verdict: PASS (hard fail) → WATCH (soft condition unmet) → BUY (all green).
+// PASS is checked first; if any PASS condition fires, WATCH/BUY are never evaluated.
 // Returns { verdict: "BUY"|"WATCH"|"PASS", reasons: string[], profitOnCost: number }
 export function evaluateDecision({ appraisal, icrResult, fundingBrrr, triage, buyBoxGate, rules, deal }) {
   const r = { ...DEFAULT_DECISION_RULES, ...(rules || {}) };

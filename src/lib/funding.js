@@ -8,6 +8,9 @@ function pctStr(v) { return `${(Number(v) * 100).toFixed(4).replace(/\.?0+$/, ""
 
 // ── SDLT ──────────────────────────────────────────────────────────────────────
 
+// SDLT band tables encode the current (post-budget) rates for England only.
+// Scotland uses LBTT; Wales uses LTT — a warning is surfaced in the UI when
+// the deal's country field is set to Scotland or Wales.
 // Additional-property surcharge bands effective 31 October 2024.
 // Standard residential bands effective 1 April 2025 (nil-rate threshold back to £125k).
 const SDLT_BANDS_ADDITIONAL = [
@@ -51,8 +54,9 @@ export function calcSdltAudit(price, additionalProperty) {
 
 // ── Bridge interest ───────────────────────────────────────────────────────────
 
-// Retained: interest compounds and is added to bridge redemption (no monthly cash outflow).
-// Serviced: interest paid monthly from own cash (simple calculation, no compounding).
+// Retained (rolled-up): interest compounds monthly — standard for most UK bridging products.
+//   No monthly cash outflow; the total is settled at redemption.
+// Serviced: interest paid from own cash each month — lower redemption but higher cash-in day 1.
 export function calcBridgeInterest(loan, monthlyRate, termMonths, mode) {
   loan = Number(loan) || 0;
   monthlyRate = Number(monthlyRate) || 0;
@@ -155,7 +159,9 @@ export function calcFundingModeBridge({
   const servicedTotal = interest.mode === "serviced" ? interest.total.value : 0;
   const retainedTotal = interest.mode === "retained" ? interest.total.value : 0;
 
-  // Cash in = own-cash requirement on day of purchase
+  // Cash-in = every £ that leaves your account on completion day.
+  // For retained interest the bridge rolls up and is repaid at exit — not counted here.
+  // For serviced interest the monthly payments come from your pocket — counted here.
   const cashIn = av(
     (price - bridgeLoan.value) + sdlt.value + feesTotal + refurbTotal + arrangementFee.value + holdingCosts + servicedTotal,
     "(price − bridge) + SDLT + fees + refurb + arrangement" +
@@ -192,7 +198,9 @@ export function calcFundingModeBridge({
     `product fee ${pctStr(mortgageProductFeePct)} × refi loan`,
     { mortgageProductFeePct, refiLoan: refiLoan.value },
   );
-  // money left in = own cash not recovered after refinance
+  // Money left in is the BRRR quality metric: how much of your own cash was NOT
+  // returned by the refinance. Zero = perfect recycling; negative = cash released.
+  // Target: as close to zero as possible.
   const moneyLeftInRaw = cashIn.value - (refiLoan.value - bridgeRedemption.value - mortgageProductFee.value);
   const cashReleased = moneyLeftInRaw < 0;
   const moneyLeftIn = av(
@@ -258,6 +266,10 @@ export function calcFundingModeMortgage({ price, additionalProperty, feesTotal, 
 
 // ── ICR stress test ───────────────────────────────────────────────────────────
 
+// ICR (Interest Coverage Ratio) = annual rent ÷ (loan × stress rate).
+// Most UK BTL lenders require ≥ 1.25× at their own stress rate (often 5–5.5%).
+// Some lenders use 1.45× as a reference rate for higher-rate taxpayers.
+// If the deal's ICR fails, the Decision Brief returns PASS when a debt strategy is in use.
 const ICR_DISCLAIMER =
   "Lender criteria (LTV, ICR, stress rate) vary by lender. Illustrative — confirm with your broker. Not a lending offer.";
 
