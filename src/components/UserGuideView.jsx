@@ -1299,7 +1299,7 @@ export default function UserGuideView() {
     <div className="space-y-3">
       {/* Page header */}
       <div className="flex items-start gap-4">
-        <img src={darkLogo} alt="DealsDash" className="h-10 object-contain shrink-0 mt-0.5" />
+        <img src={darkLogo} alt="DealsDash" className="h-16 object-contain shrink-0" />
         <div>
           <h1 className="font-serif text-2xl font-semibold text-vx-text">User Guide</h1>
           <p className="text-sm text-vx-muted mt-0.5">
