@@ -12,8 +12,10 @@ import React, { useState, useMemo } from "react";
 import {
   BookOpen, ChevronRight, ChevronDown, Home, Layers, Building2, BookMarked,
   Wallet, TrendingUp, ShieldAlert, Users, KeyRound, Radar, Bell, Map,
-  CheckCircle2, XCircle, AlertTriangle, Info, Star, Search, X,
+  CheckCircle2, XCircle, AlertTriangle, Info, Star, Search, X, Library,
 } from "lucide-react";
+import darkLogo from "../logos/Dark Logo.png";
+import darkIcon from "../logos/Dark Icon.png";
 
 /* ── Text highlight helper ─────────────────────────────────────────────── */
 
@@ -561,6 +563,12 @@ const SECTIONS = [
     icon: Star,
     terms: "flags indicators badges proceed caution reject buy watch pass funding gap fits buy box outside buy box no money left in cash released icr epc imd imdd flood areas compliance valid expiring overdue partial no brrr ni",
   },
+  {
+    id: "glossary",
+    title: "Glossary — terms, abbreviations & definitions",
+    icon: Library,
+    terms: "glossary terms abbreviations definitions annualised roi arrangement fee ast assured shorthold tenancy bridge loan bridging brrr buy refurbish refinance rent btl buy to let buy box capital base cash in cash released comps comparables completion conveyancing decision brief deposit dscr ea estate agent environment agency eicr electrical epc energy performance certificate exchange exit fee free cash freehold funding gap gas safety cp12 gating question gdv gross development value guide price hammer price hmo house in multiple occupation holding costs hpi house price index icr interest coverage ratio imd index multiple deprivation land registry lbtt ltt leasehold legal pack lsoa ltv loan to value max bid mees money left in net profit open questions pipr playbook prs profit on cost red flag refinance refi retained interest right to rent roi runway sdlt stamp duty section 8 section 21 serviced interest stress rate title register triage verdict vixiv void period",
+  },
 ];
 
 /* ─── Section content renderers ─────────────────────────────────────────── */
@@ -1033,6 +1041,217 @@ function FlagsContent({ query }) {
   );
 }
 
+/* ─── Glossary ──────────────────────────────────────────────────────────── */
+
+const GLOSSARY = [
+  {
+    letter: "A",
+    entries: [
+      { term: "Annualised ROI", def: "Return on investment expressed as a yearly rate regardless of actual project length. Formula: ROI × (52 / project weeks). Lets you compare deals of different durations on equal terms." },
+      { term: "Arrangement fee", def: "A one-off lender charge when a bridge loan is drawn, typically 1–2% of the loan amount. Often deducted from the advance rather than paid upfront." },
+      { term: "AST — Assured Shorthold Tenancy", def: "The standard residential tenancy agreement in England and Wales. Most BTL properties operate on an AST, which gives the landlord a mandatory Section 21 right to recover possession (currently being removed under the Renters' Rights Bill)." },
+    ],
+  },
+  {
+    letter: "B",
+    entries: [
+      { term: "Bridge loan / Bridging finance", def: "A short-term secured loan (typically 6–18 months) used to fund a purchase or refurb before a long-term mortgage or sale proceeds are available. Rates are monthly (e.g. 0.75%/month). DealsDash supports retained and serviced interest modes." },
+      { term: "Bridge redemption", def: "The total amount repaid to the bridge lender at exit: loan principal + retained interest + exit fee. Shown in the Funding Planner." },
+      { term: "BRRR — Buy, Refurbish, Refinance, Rent", def: "A capital-recycling strategy: buy at a discount, add value through refurb, refinance at the new higher value (pulling most or all invested capital back out), then hold and rent. The BRRR exit tab in the Funding Planner shows money left in and cash released." },
+      { term: "BTL — Buy to Let", def: "A property purchased to be rented out rather than lived in. Financed with a BTL mortgage, which typically requires 25% deposit minimum and passes an ICR stress test." },
+      { term: "Buy box", def: "A named set of geographic filters and financial thresholds that defines what a qualifying deal looks like for a specific strategy. Stored as a Playbook in DealsDash. Deals are scored against the active buy box automatically." },
+    ],
+  },
+  {
+    letter: "C",
+    entries: [
+      { term: "Capital base", def: "Total capital committed across all active deals (bridge debt drawn + deposits + refurb spend). Not the same as your total cash invested — it includes borrowed money." },
+      { term: "Cash in", def: "The amount of your own money leaving your account on or before completion day. For retained-interest bridges this excludes the rolled-up interest (repaid at exit). For serviced bridges it includes monthly payments." },
+      { term: "Cash released", def: "When a BRRR refinance returns more cash than was originally invested. Shown as a green badge in the Funding Planner. Means the deal has recycled all capital and generated a surplus." },
+      { term: "Comps — Comparables", def: "Recent sold prices for similar properties within the same area, used to estimate GDV. Entered in the Deal detail Comps tab and verified against Land Registry data." },
+      { term: "Completion", def: "The final stage of a purchase: funds transfer, legal ownership changes, keys are handed over. The deal is legally binding from exchange; it physically concludes at completion." },
+      { term: "Conveyancing", def: "The legal process of transferring ownership from seller to buyer. Carried out by a solicitor or licensed conveyancer. Costs are entered in the deal's Acquisition fees." },
+      { term: "CP12 — Gas Safety Certificate", def: "Legally required annual certificate for rental properties with gas appliances. Issued by a Gas Safe-registered engineer. A compliance item in the Properties tab; expiry triggers an Overdue alert." },
+    ],
+  },
+  {
+    letter: "D",
+    entries: [
+      { term: "Decision Brief", def: "The one-page summary generated per deal, combining headline financials, ICR, valuation, risk register, open questions, and a three-tier BUY / WATCH / PASS verdict. Can be printed to PDF." },
+      { term: "Deposit (BTL mortgage)", def: "The cash element of a BTL purchase not covered by the mortgage. Typically 20–25% for standard BTL; higher for HMO, commercial, or portfolio landlords." },
+      { term: "DSCR — Debt Service Coverage Ratio", def: "Net operating income divided by total debt payments. Similar to ICR but used in commercial lending. DealsDash uses ICR for residential BTL calculations." },
+    ],
+  },
+  {
+    letter: "E",
+    entries: [
+      { term: "EA — Estate Agent / Environment Agency", def: "Two different meanings in context. Estate Agent: handles property sales; the EA fee (typically 1–2% of GDV) is deducted from flip sale proceeds. Environment Agency: the body whose flood-risk mapping is used in Area Intelligence." },
+      { term: "EICR — Electrical Installation Condition Report", def: "Legally required every 5 years for rental properties. Certifies the electrical installation is safe. A compliance item in the Properties tab." },
+      { term: "EPC — Energy Performance Certificate", def: "Rates a property A–G for energy efficiency. Rental properties must be EPC E or above to let legally in England and Wales. EPC C is the proposed 2030 minimum (MEES). F/G ratings trigger a High-risk flag in the Decision Brief." },
+      { term: "Exchange", def: "The point when signed contracts are exchanged between solicitors. The deal becomes legally binding — pulling out forfeits your deposit. Completion usually follows 28 days later." },
+      { term: "Exit fee", def: "A bridge lender charge on loan redemption. Typically 1% of the loan. Added to bridge redemption in the Funding Planner." },
+    ],
+  },
+  {
+    letter: "F",
+    entries: [
+      { term: "Free cash", def: "Capital base minus committed capital. The cash immediately available to deploy. Shown as a KPI on the Dashboard. Declining free cash signals over-commitment risk." },
+      { term: "Freehold", def: "Ownership of the building and the land it stands on with no time limit. No ground rent or service charges to a freeholder. Preferred tenure for BRRR strategies." },
+      { term: "Funding gap", def: "When total cash required (bridge deposit + fees + refurb + SDLT) exceeds your available own cash. Triggers a red badge on the deal card. The deal cannot proceed without additional capital." },
+    ],
+  },
+  {
+    letter: "G",
+    entries: [
+      { term: "Gating question", def: "One of five triage checklist questions (Q1 Area Known, Q2 Asset Type Fits, Q3 Condition Adds Value, Q7 Liquidity, Q8 Area Strong) whose 'No' answer automatically forces a PASS verdict. Non-gating questions (Q4, Q5, Q6) are informational only." },
+      { term: "GDV — Gross Development Value", def: "The estimated open-market value of the property after all works are complete and it is in a fully refurbished, lettable, or saleable state. The ceiling price for exit strategy calculations. Derived from comps or entered as an override." },
+      { term: "Guide price", def: "The auctioneer's published estimate of what a lot will sell for. The reserve is usually set at or just below guide price. Not a guarantee of final hammer price." },
+    ],
+  },
+  {
+    letter: "H",
+    entries: [
+      { term: "Hammer price", def: "The price at which the auctioneer's hammer falls, legally binding the winning bidder. Excludes buyer's premium (typically 1–5% + VAT) and other auction fees." },
+      { term: "HMO — House in Multiple Occupation", def: "A property rented by three or more unrelated tenants who share facilities (kitchen, bathroom). Usually requires a council HMO licence and meets higher fire safety standards. Higher yields but more regulatory burden." },
+      { term: "Holding costs", def: "Ongoing costs while you own the property but before it generates income: council tax, utilities, insurance, security. Entered in the Timeline tab and factored into cash-in calculations." },
+      { term: "HPI — House Price Index", def: "Published monthly by the UK Land Registry. DealsDash uses HPI SPARQL data to calculate 12-month price momentum for a given town, displayed as a momentum pill on the deal." },
+    ],
+  },
+  {
+    letter: "I",
+    entries: [
+      { term: "ICR — Interest Coverage Ratio", def: "Annual gross rent ÷ (loan × stress rate). Most BTL lenders require ICR ≥ 1.25× at a stress rate of 5–5.5%. A 1.45× reference threshold applies for higher-rate taxpayers at some lenders. Failing ICR on a BRRR exit triggers a PASS in the Decision Brief." },
+      { term: "IMD — Index of Multiple Deprivation", def: "A government measure of relative deprivation for small geographic areas (LSOAs). England has ten deciles — decile 1 is most deprived. Deciles 1–3 flag a demand risk in DealsDash. Sourced from postcodes.io." },
+    ],
+  },
+  {
+    letter: "L",
+    entries: [
+      { term: "Land Registry", def: "The government body that registers ownership of land and property in England and Wales. Source of the Title Register, Price Paid data (used for comps), and HPI. DealsDash uses its SPARQL endpoint for live price momentum." },
+      { term: "LBTT — Land and Buildings Transaction Tax", def: "The Scottish equivalent of SDLT. DealsDash calculates England-only SDLT rates; a warning appears if the deal's country field is set to Scotland." },
+      { term: "Leasehold", def: "You own the right to occupy the property for a fixed lease term. A freeholder owns the building and land. Ground rent, service charges, and lease length all affect value and mortgage eligibility." },
+      { term: "Legal pack", def: "The bundle of documents released by the auctioneer before a lot goes to auction: title register, office copies, searches, special conditions, tenancy agreements, planning. DealsDash can flag red issues when a legal pack is reviewed via the AI analysis tool." },
+      { term: "LSOA — Lower Super Output Area", def: "A small geographic unit used in IMD and census data, covering roughly 1,500 residents. The IMD decile is assigned at LSOA level; postcodes.io maps postcodes to their LSOA." },
+      { term: "LTT — Land Transaction Tax", def: "The Welsh equivalent of SDLT. DealsDash shows England-only SDLT; a warning appears when the deal's country field is set to Wales." },
+      { term: "LTV — Loan to Value", def: "The ratio of the loan amount to the property value, expressed as a percentage. A 75% LTV on a £200,000 property = £150,000 loan. Bridge LTV and refi LTV are set separately in the Funding Planner." },
+    ],
+  },
+  {
+    letter: "M",
+    entries: [
+      { term: "Max bid", def: "The highest price you can offer and still meet your profit and cash thresholds. Calculated by DealsDash using a binary search solver that works backwards from your target profit-on-cost percentage." },
+      { term: "MEES — Minimum Energy Efficiency Standards", def: "Regulations requiring rental properties to reach at least EPC E (now) and EPC C (proposed 2030) before they can be legally let. Properties with F/G ratings face a letting restriction." },
+      { term: "Money left in", def: "BRRR quality metric. Cash in minus net refinance proceeds (refi loan − bridge redemption − product fee). Measures how much of your invested capital was not returned by the refinance. Zero = perfect capital recycling. Negative = cash released." },
+    ],
+  },
+  {
+    letter: "N",
+    entries: [
+      { term: "Net profit", def: "Gross sale or rental income minus all costs: purchase price, SDLT, acquisition fees, refurb, bridge interest, arrangement fee, exit fee, selling costs, and holding costs. The primary financial output of the appraisal engine." },
+    ],
+  },
+  {
+    letter: "O",
+    entries: [
+      { term: "Open questions", def: "Items shown in the Decision Brief that may affect the deal but are not hard stops. Examples: missing floor area, IMD-deprivation demand risk, unverified GDV (no comps entered), or an ICR that limits the refinance loan." },
+    ],
+  },
+  {
+    letter: "P",
+    entries: [
+      { term: "PIPR — Private Investor Price Ratio", def: "An ONS-derived affordability measure used in the Area Screener to rank local authority areas by rental demand potential. Higher PIPR indicates stronger relative demand for private rentals." },
+      { term: "Playbook", def: "A named set of buy box filters (postcodes, property types, tenures, price ceiling) and financial assumption overrides (LTV, rates, profit thresholds). Create separate playbooks for different strategies — e.g. South-East Flip vs Midlands BRRR." },
+      { term: "PRS — Private Rented Sector", def: "The collective term for privately-owned residential properties let to tenants on open-market rents. Distinct from social housing and build-to-rent." },
+      { term: "Profit on cost", def: "Net profit ÷ total cost, expressed as a percentage. DealsDash default minimum is 15%. Falling below this threshold triggers a PASS in the Decision Brief." },
+    ],
+  },
+  {
+    letter: "R",
+    entries: [
+      { term: "Red flag", def: "A legal pack issue flagged as 'Raise with solicitor before bidding'. DealsDash AI analysis assigns this urgency level to serious title, tenure, planning, or covenant issues. A single red flag automatically triggers a PASS verdict." },
+      { term: "Refinance / Refi", def: "Replacing the short-term bridge loan with a long-term BTL mortgage after refurb is complete. Used in BRRR to recycle capital. The refi LTV and product fee are entered in the BRRR exit tab of the Funding Planner." },
+      { term: "Retained interest", def: "Bridge interest that rolls up and compounds monthly, settled at redemption rather than paid monthly. Standard for most UK bridging products. Higher total interest than serviced, but no monthly cash outflow during the project." },
+      { term: "Right to Rent", def: "UK legal requirement for landlords to verify that adult tenants have the legal right to live in the UK before the tenancy starts. Failure to check is a criminal offence." },
+      { term: "ROI — Return on Investment", def: "Net profit ÷ own cash invested, expressed as a percentage. Measures efficiency of deployed capital. Compare deals using annualised ROI rather than raw ROI to account for project duration." },
+      { term: "Runway", def: "How many months of spending you can sustain at your current monthly burn rate before free cash runs out. A key Dashboard KPI for capital management. Below 3 months is a warning sign." },
+    ],
+  },
+  {
+    letter: "S",
+    entries: [
+      { term: "SDLT — Stamp Duty Land Tax", def: "A UK transaction tax on property purchases in England. Calculated in progressive bands. An additional-property surcharge of 5% applies when you already own one or more properties (effective 31 Oct 2024). Scotland uses LBTT; Wales uses LTT." },
+      { term: "Section 8 notice", def: "A notice served on a tenant to begin eviction proceedings where they have breached the tenancy (e.g. rent arrears of 2+ months). Requires a court hearing. Can be issued from day 1 of arrears in some circumstances." },
+      { term: "Section 21 notice", def: "A 'no-fault' notice allowing a landlord to end an AST without giving a reason, subject to notice periods. Being abolished under the Renters' Rights Bill. Check current law before serving." },
+      { term: "Serviced interest", def: "Bridge interest paid from your own cash each month rather than rolling up. Lower total interest cost but higher day-one cash commitment. Switch between retained and serviced in the Funding Planner." },
+      { term: "Stress rate", def: "The notional interest rate a BTL lender uses to calculate ICR, typically 5.0–5.5% even if the actual mortgage rate is lower. Protects the lender against future rate rises. Enter your lender's stress rate in the BRRR exit tab." },
+    ],
+  },
+  {
+    letter: "T",
+    entries: [
+      { term: "Title register", def: "The official Land Registry record of who owns a property and any registered charges, restrictions, or covenants. Obtained from HMLR as part of the legal pack. DealsDash's AI legal pack reviewer flags title issues as red flags." },
+      { term: "Triage", def: "The eight-question checklist in the Pipeline that evaluates a lead before promoting it to a deal. Five questions are gating (automatic PASS if No). Three are informational (affect WATCH completeness but not PASS)." },
+    ],
+  },
+  {
+    letter: "V",
+    entries: [
+      { term: "Verdict — PROCEED / CAUTION / REJECT", def: "The six-check quick appraisal shown on deal cards: profit, ROI, annualised ROI, risk score, funding gap, occupier demand. 0 fails = PROCEED (green); 1–2 fails = CAUTION (amber); 3+ fails = REJECT (red)." },
+      { term: "Verdict — BUY / WATCH / PASS", def: "The three-tier Decision Brief verdict. PASS fires first on any hard fail (gating question, red flag, buy box miss, ICR fail, profit-on-cost below minimum). WATCH fires when soft conditions are unmet. BUY requires everything green." },
+      { term: "VIXIV LTD", def: "The company that built and operates DealsDash. All deal data is stored in your own Firebase project under your Google account." },
+      { term: "Void period", def: "Time a rental property sits empty between tenancies, expressed as a percentage of the year in the Returns tab. A 8.3% void = 1 month empty per year. Reduces effective annual rent and therefore ICR." },
+    ],
+  },
+];
+
+function GlossaryContent({ query }) {
+  const filteredGroups = useMemo(() => {
+    if (!query) return GLOSSARY;
+    return GLOSSARY.map(g => ({
+      ...g,
+      entries: g.entries.filter(
+        e =>
+          e.term.toLowerCase().includes(query) ||
+          e.def.toLowerCase().includes(query)
+      ),
+    })).filter(g => g.entries.length > 0);
+  }, [query]);
+
+  if (filteredGroups.length === 0) {
+    return <p className="text-sm text-vx-muted">No glossary entries match "{query}".</p>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-vx-muted">
+        All technical terms, abbreviations, and special terminology used in DealsDash — alphabetically ordered.
+      </p>
+      {filteredGroups.map(({ letter, entries }) => (
+        <div key={letter}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-6 h-6 flex items-center justify-center rounded font-serif font-bold text-sm bg-vx-accent text-white shrink-0">
+              {letter}
+            </span>
+            <div className="flex-1 border-t border-vx-divider" />
+          </div>
+          <dl className="space-y-3">
+            {entries.map(({ term, def }) => (
+              <div key={term} className="grid grid-cols-[220px_1fr] gap-3 text-xs">
+                <dt className="font-semibold text-vx-accent-strong leading-snug pt-0.5">
+                  <Highlight text={term} query={query} />
+                </dt>
+                <dd className="text-vx-text leading-relaxed">
+                  <Highlight text={def} query={query} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const CONTENT_MAP = {
   overview:      OverviewContent,
   dashboard:     DashboardContent,
@@ -1049,6 +1268,7 @@ const CONTENT_MAP = {
   screener:      ScreenerContent,
   notifications: NotificationsContent,
   flags:         FlagsContent,
+  glossary:      GlossaryContent,
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1078,11 +1298,14 @@ export default function UserGuideView() {
   return (
     <div className="space-y-3">
       {/* Page header */}
-      <div>
-        <h1 className="font-serif text-2xl font-semibold text-vx-text">User Guide</h1>
-        <p className="text-sm text-vx-muted mt-1">
-          Everything you need to understand every screen, tab, field, flag, and indicator in DealsDash.
-        </p>
+      <div className="flex items-start gap-4">
+        <img src={darkLogo} alt="DealsDash" className="h-10 object-contain shrink-0 mt-0.5" />
+        <div>
+          <h1 className="font-serif text-2xl font-semibold text-vx-text">User Guide</h1>
+          <p className="text-sm text-vx-muted mt-0.5">
+            Everything you need to understand every screen, tab, field, flag, and indicator in DealsDash.
+          </p>
+        </div>
       </div>
 
       {/* Search bar */}
@@ -1139,9 +1362,15 @@ export default function UserGuideView() {
         })}
       </div>
 
-      <footer className="pt-4 border-t border-vx-divider text-xs text-vx-muted">
-        DealsDash User Guide · VIXIV LTD · Figures and thresholds are illustrative defaults.
-        Always verify financial calculations with your solicitor, broker, and accountant before exchanging contracts.
+      <footer className="pt-4 border-t border-vx-divider">
+        <div className="flex items-center gap-3 mb-1.5">
+          <img src={darkIcon} alt="" className="h-5 w-5 object-contain opacity-60" />
+          <span className="text-xs font-medium text-vx-muted">DealsDash · VIXIV LTD</span>
+        </div>
+        <p className="text-xs text-vx-muted">
+          Figures and thresholds are illustrative defaults. Always verify financial calculations
+          with your solicitor, broker, and accountant before exchanging contracts.
+        </p>
       </footer>
     </div>
   );
