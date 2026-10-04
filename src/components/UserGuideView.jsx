@@ -94,6 +94,11 @@ function Callout({ tone = "info", children }) {
 function FlagTable({ rows, query }) {
   return (
     <table className="w-full text-xs border-collapse">
+      <colgroup>
+        <col style={{ width: "28%" }} />
+        <col style={{ width: "48%" }} />
+        <col style={{ width: "24%" }} />
+      </colgroup>
       <thead>
         <tr className="border-b border-vx-divider text-left text-vx-muted">
           <th className="py-1.5 pr-3 font-medium">Indicator / badge</th>
@@ -104,7 +109,7 @@ function FlagTable({ rows, query }) {
       <tbody>
         {rows.map(([flag, meaning, good], i) => (
           <tr key={i} className="border-b border-vx-divider last:border-0 align-top">
-            <td className="py-1.5 pr-3 font-mono font-semibold text-vx-accent whitespace-nowrap">
+            <td className="py-1.5 pr-3 font-mono font-semibold text-vx-accent">
               <Highlight text={flag} query={query} />
             </td>
             <td className="py-1.5 pr-3 text-vx-text"><Highlight text={meaning} query={query} /></td>

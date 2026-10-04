@@ -2938,19 +2938,19 @@ function RiskView({ deals, ledger, settings }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-vx-muted text-xs uppercase">
-                <tr><th className="text-left py-2">Deal</th><th className="text-left py-2">Town</th><th className="text-right py-2">Risk score</th><th className="text-right py-2">Rating</th><th className="text-right py-2">Bridge drawn</th><th className="text-right py-2">Shortfall</th></tr>
+                <tr><th className="text-left py-2 px-3">Deal</th><th className="text-left py-2 px-3">Town</th><th className="text-right py-2 px-3">Risk score</th><th className="text-right py-2 px-3">Rating</th><th className="text-right py-2 px-3">Bridge drawn</th><th className="text-right py-2 px-3">Shortfall</th></tr>
               </thead>
               <tbody className="font-mono tabular-nums">
                 {summary.active.map(({ deal, a }) => {
                   const risk = calcRiskScore(deal.riskFactors);
                   return (
                     <tr key={deal.id} className="border-t border-vx-divider">
-                      <td className="py-2 font-sans">{deal.name}</td>
-                      <td className="py-2 font-sans">{deal.town || "—"}</td>
-                      <td className="text-right py-2">{fmtNum(risk.score)}</td>
-                      <td className="text-right py-2"><Badge tone={risk.rating === "LOW RISK" ? "good" : risk.rating === "MEDIUM RISK" ? "warn" : "bad"}>{risk.rating}</Badge></td>
-                      <td className="text-right py-2">{fmtGBP(a.funding.bridgeDrawn)}</td>
-                      <td className={`text-right py-2 ${a.funding.shortfall > 0 ? "text-vx-negative" : ""}`}>{fmtGBP(a.funding.shortfall)}</td>
+                      <td className="py-2 px-3 font-sans">{deal.name}</td>
+                      <td className="py-2 px-3 font-sans">{deal.town || "—"}</td>
+                      <td className="text-right py-2 px-3">{fmtNum(risk.score)}</td>
+                      <td className="text-right py-2 px-3"><Badge tone={risk.rating === "LOW RISK" ? "good" : risk.rating === "MEDIUM RISK" ? "warn" : "bad"}>{risk.rating}</Badge></td>
+                      <td className="text-right py-2 px-3">{fmtGBP(a.funding.bridgeDrawn)}</td>
+                      <td className={`text-right py-2 px-3 ${a.funding.shortfall > 0 ? "text-vx-negative" : ""}`}>{fmtGBP(a.funding.shortfall)}</td>
                     </tr>
                   );
                 })}
