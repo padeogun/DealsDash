@@ -832,7 +832,7 @@ function Sidebar({ tab, setTab, onNav, isDesktop, user, notifUnreadCount = 0 }) 
   ];
   return (
     <nav
-      style={{ display: "flex", flexDirection: isDesktop ? "column" : "row", width: isDesktop ? 224 : "100%", minWidth: isDesktop ? 224 : 0, flexShrink: 0, overflowX: isDesktop ? "visible" : "auto" }}
+      style={{ display: "flex", flexDirection: isDesktop ? "column" : "row", width: isDesktop ? 224 : "100%", minWidth: isDesktop ? 224 : 0, flexShrink: 0, overflowY: isDesktop ? "auto" : "visible", overflowX: isDesktop ? "hidden" : "auto" }}
       className="bg-vx-header text-[color:var(--vx-header-fg)]"
     >
       <div style={{ padding: 16, flexShrink: 0 }}>
@@ -5669,7 +5669,7 @@ function AppInner({ user }) {
   if (!loaded) return <LoadingScreen label={migrateNote || "Loading…"} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", minHeight: "100vh" }} className="bg-vx-surface-2 font-sans text-vx-text">
+    <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", height: isDesktop ? "100vh" : "auto", minHeight: isDesktop ? 0 : "100vh", overflow: isDesktop ? "hidden" : "visible" }} className="bg-vx-surface-2 font-sans text-vx-text">
       <Sidebar tab={tab} setTab={(t) => { setTab(t); if (t !== "deals") setSelectedId(null); if (t !== "properties") setSelectedPropertyId(null); }} isDesktop={isDesktop} user={user} notifUnreadCount={notifications.filter(n => !n.readAt).length} />
       {tab === "workspace" ? (
         <div className="flex-1 overflow-hidden flex flex-col">
@@ -5681,7 +5681,7 @@ function AppInner({ user }) {
           />
         </div>
       ) : (
-        <main className="flex-1 overflow-x-hidden" style={{ padding: isDesktop ? 24 : 14 }}>
+        <main className="flex-1 overflow-x-hidden" style={{ padding: isDesktop ? 24 : 14, overflowY: isDesktop ? "auto" : "visible" }}>
           {!storageOk && <StorageWarning />}
           {tab === "dashboard" && <DashboardView deals={deals} ledger={ledger} properties={properties} settings={settings} thresholds={effectiveThresholds} goToDeals={() => setTab("deals")} goToRisk={() => setTab("risk")} goToProperties={() => setTab("properties")} />}
           {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} />}
