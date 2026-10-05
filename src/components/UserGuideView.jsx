@@ -14,8 +14,6 @@ import {
   Wallet, TrendingUp, ShieldAlert, Users, KeyRound, Radar, Bell, Map,
   CheckCircle2, XCircle, AlertTriangle, Info, Star, Search, X, Library,
 } from "lucide-react";
-import darkLogo from "../logos/Dark Logo.png";
-import darkIcon from "../logos/Dark Icon.png";
 
 /* ── Text highlight helper ─────────────────────────────────────────────── */
 
@@ -1298,14 +1296,11 @@ export default function UserGuideView() {
   return (
     <div className="space-y-3">
       {/* Page header */}
-      <div className="flex items-start gap-4">
-        <img src={darkLogo} alt="DealsDash" className="h-16 object-contain shrink-0" />
-        <div>
-          <h1 className="font-serif text-2xl font-semibold text-vx-text">User Guide</h1>
-          <p className="text-sm text-vx-muted mt-0.5">
-            Everything you need to understand every screen, tab, field, flag, and indicator in DealsDash.
-          </p>
-        </div>
+      <div>
+        <h1 className="font-serif text-2xl font-semibold text-vx-text">User Guide</h1>
+        <p className="text-sm text-vx-muted mt-1">
+          Everything you need to understand every screen, tab, field, flag, and indicator in DealsDash.
+        </p>
       </div>
 
       {/* Search bar */}
@@ -1362,15 +1357,9 @@ export default function UserGuideView() {
         })}
       </div>
 
-      <footer className="pt-4 border-t border-vx-divider">
-        <div className="flex items-center gap-3 mb-1.5">
-          <img src={darkIcon} alt="" className="h-5 w-5 object-contain opacity-60" />
-          <span className="text-xs font-medium text-vx-muted">DealsDash · VIXIV LTD</span>
-        </div>
-        <p className="text-xs text-vx-muted">
-          Figures and thresholds are illustrative defaults. Always verify financial calculations
-          with your solicitor, broker, and accountant before exchanging contracts.
-        </p>
+      <footer className="pt-4 border-t border-vx-divider text-xs text-vx-muted">
+        DealsDash User Guide · VIXIV LTD · Figures and thresholds are illustrative defaults.
+        Always verify financial calculations with your solicitor, broker, and accountant before exchanging contracts.
       </footer>
     </div>
   );

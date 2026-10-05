@@ -36,8 +36,6 @@ import { Badge as VxBadge } from "./components/Badge.jsx";
 import WorkspaceView from "./components/WorkspaceView.jsx";
 import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
-import lightLogo from "./logos/Light Logo.png";
-import lightIcon from "./logos/Light Icon.png";
 
 /* =================================================================================
    FIREBASE — Google Sign-In gated to one account, Firestore for cross-device sync
@@ -837,15 +835,9 @@ function Sidebar({ tab, setTab, onNav, isDesktop, user, notifUnreadCount = 0 }) 
       style={{ display: "flex", flexDirection: isDesktop ? "column" : "row", width: isDesktop ? 224 : "100%", minWidth: isDesktop ? 224 : 0, flexShrink: 0, overflowX: isDesktop ? "visible" : "auto" }}
       className="bg-vx-header text-[color:var(--vx-header-fg)]"
     >
-      <div style={{ padding: isDesktop ? 16 : "10px 12px", flexShrink: 0 }}>
-        {isDesktop ? (
-          <>
-            <img src={lightLogo} alt="DealsDash" style={{ height: 36, objectFit: "contain", display: "block", maxWidth: 180 }} />
-            <div className="text-xs text-[color:var(--vx-header-muted)] whitespace-nowrap mt-1">Deal &amp; cash flow control</div>
-          </>
-        ) : (
-          <img src={lightIcon} alt="DealsDash" style={{ height: 28, width: 28, objectFit: "contain", display: "block" }} />
-        )}
+      <div style={{ padding: 16, flexShrink: 0 }}>
+        <div className="font-serif text-lg font-semibold leading-tight whitespace-nowrap">DealsDash</div>
+        {isDesktop && <div className="text-xs text-[color:var(--vx-header-muted)] whitespace-nowrap">Deal &amp; cash flow control</div>}
       </div>
       <div style={{ display: "flex", flexDirection: isDesktop ? "column" : "row", flex: 1 }}>
         {items.map(({ id, label, icon: Icon }) => (
