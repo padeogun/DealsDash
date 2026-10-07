@@ -317,7 +317,8 @@ export function buildBriefSnapshot({ deal, appraisal, icrResult, fundingBrrr, tr
 
     valuation: {
       guidePrice:   auditVal(deal.guidePrice || deal.price || 0, "dealData",  "Property & comps tab",   false, "gbp"),
-      maxBid:       auditVal(deal.maxBid || null,                 "dealCalc",  "Max bid solver",          false, "gbp"),
+      maxBid:       auditVal(deal.maxBid || null,                 "dealCalc",  "Max bid solver (ceiling)", false, "gbp"),
+      maxBidSafe:   auditVal(deal.maxBidSafe || null,            "dealCalc",  "Max bid solver (recommended, after buffer)", false, "gbp"),
       gdv:          auditVal(appraisal?.gdv || 0,                "dealCalc",  "GDV calculation",         false, "gbp"),
       compsCount:   (deal.comps || []).filter(c => c.price > 0).length,
       compsDateRange: _compDateRange(deal.comps),

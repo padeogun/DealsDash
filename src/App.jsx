@@ -114,14 +114,15 @@ function calcFunding(deal) {
   const price = Number(deal.price) || 0;
   const sdlt = calcSdltAudit(price, deal.additionalProperty !== false).value;
   const feesTotal = sumFees(deal.fees);
+  const buyersPremium = round2(price * (Number(deal.buyersPremiumPct) || 0));
   const refurb = calcRefurbTotal(deal.refurbItems, deal.contingencyPct);
-  const fundsRequired = price + sdlt + feesTotal + refurb.total;
+  const fundsRequired = price + sdlt + feesTotal + buyersPremium + refurb.total;
   const ownCash = Number(deal.ownCash) || 0;
   const maxBridge = price * (Number(deal.bridgeLTV) || 0);
   const bridgeNeeded = Math.max(0, fundsRequired - ownCash);
   const bridgeDrawn = Math.min(bridgeNeeded, maxBridge);
   const shortfall = round2(fundsRequired - ownCash - bridgeDrawn);
-  return { sdlt, feesTotal, refurb, fundsRequired: round2(fundsRequired), maxBridge: round2(maxBridge), bridgeDrawn: round2(bridgeDrawn), shortfall };
+  return { sdlt, feesTotal, buyersPremium, refurb, fundsRequired: round2(fundsRequired), maxBridge: round2(maxBridge), bridgeDrawn: round2(bridgeDrawn), shortfall };
 }
 
 function calcTimeline(phases) {
@@ -219,6 +220,7 @@ function solveMaxBid(deal, targetProfit, opts = {}) {
   const maxIter = opts.maxIter || 40;
   const gdvLow = calcGDVLow(deal);
   const hi0 = opts.hi != null ? opts.hi : gdvLow;
+  const bufferPct = Number(deal.bidBufferPct) ?? 0.02;
 
   function profitAt(price) {
     const testDeal = enrichDeal({ ...deal, price, gdvOverride: gdvLow });
@@ -229,15 +231,23 @@ function solveMaxBid(deal, targetProfit, opts = {}) {
   const profitAtLo = profitAt(lo);
   const profitAtHi = profitAt(hi);
 
-  if (profitAtHi >= targetProfit) return { maxBid: round2(hi), profitAtMaxBid: profitAtHi, gdvLow, iterations: 0, note: "Even at the full conservative GDV as purchase price, target profit is still met." };
-  if (profitAtLo < targetProfit) return { maxBid: 0, profitAtMaxBid: profitAtLo, gdvLow, iterations: 0, note: "Target profit isn't achievable at any purchase price — costs alone exceed it." };
+  if (profitAtHi >= targetProfit) {
+    const ceiling = round2(hi);
+    const safeBid = round2(ceiling * (1 - bufferPct));
+    return { maxBid: ceiling, safeBid, bufferPct, profitAtMaxBid: profitAtHi, gdvLow, iterations: 0, note: "Even at the full conservative GDV as purchase price, target profit is still met." };
+  }
+  if (profitAtLo < targetProfit) {
+    return { maxBid: 0, safeBid: 0, bufferPct, profitAtMaxBid: profitAtLo, gdvLow, iterations: 0, note: "Target profit isn't achievable at any purchase price — costs alone exceed it." };
+  }
 
   while (hi - lo > tol && iterations < maxIter) {
     const mid = (lo + hi) / 2;
     if (profitAt(mid) >= targetProfit) lo = mid; else hi = mid;
     iterations++;
   }
-  return { maxBid: round2(lo), profitAtMaxBid: profitAt(lo), gdvLow, iterations, note: null };
+  const ceiling = round2(lo);
+  const safeBid = round2(ceiling * (1 - bufferPct));
+  return { maxBid: ceiling, safeBid, bufferPct, profitAtMaxBid: profitAt(lo), gdvLow, iterations, note: null };
 }
 
 function calcRiskScore(factors) {
@@ -473,7 +483,9 @@ function newDeal() {
     fundingMode: "bridge", interestMode: "retained", bridgeLoanBasis: "purchase",
     btlProductFeePct: 0.01, fundAllocation: null,
     pipelineStage: "Purchased",
-    maxBid: null, maxBidLocked: false, maxBidLog: [], maxBidSolveNote: null, maxBidGdvLow: null,
+    buyersPremiumPct: 0,    // auction buyer's premium as % of hammer price (e.g. 0.03 = 3%)
+    bidBufferPct: 0.02,     // safety margin below the ceiling bid (e.g. 0.02 = 2%)
+    maxBid: null, maxBidSafe: null, maxBidLocked: false, maxBidLog: [], maxBidSolveNote: null, maxBidGdvLow: null,
     areaIntelligence: null,
     epcCheck: null,
     listingType: "other", // "auction" | "agent" | "d2v" | "trader" | "other" — carried from the lead; the viewing survey reads it
@@ -1549,7 +1561,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
   function runSolveMaxBid() {
     const result = solveMaxBid(deal, Number(targetProfitInput) || 0);
     const entry = { at: Date.now(), from: deal.maxBid, to: result.maxBid, reason: "Solved", action: "solve" };
-    onChange({ maxBid: result.maxBid, maxBidGdvLow: result.gdvLow, maxBidSolveNote: result.note, maxBidLog: [...(deal.maxBidLog || []), entry] });
+    onChange({ maxBid: result.maxBid, maxBidSafe: result.safeBid, maxBidGdvLow: result.gdvLow, maxBidSolveNote: result.note, maxBidLog: [...(deal.maxBidLog || []), entry] });
   }
 
   function lastLockedMaxBid() {
@@ -1600,7 +1612,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
     if (!deal.maxBidLocked) {
       const result = solveMaxBid(next, Number(targetProfitInput) || 0);
       const entry = { at: Date.now(), from: deal.maxBid, to: result.maxBid, reason: `Re-solved after viewing survey (${patch.refurbItems.length} lines, ${fmtGBP(patch.surveyApplied.total)})`, action: "solve" };
-      Object.assign(out, { maxBid: result.maxBid, maxBidGdvLow: result.gdvLow, maxBidSolveNote: result.note, maxBidLog: [...(deal.maxBidLog || []), entry] });
+      Object.assign(out, { maxBid: result.maxBid, maxBidSafe: result.safeBid, maxBidGdvLow: result.gdvLow, maxBidSolveNote: result.note, maxBidLog: [...(deal.maxBidLog || []), entry] });
     }
     onChange(out);
   }
@@ -1658,8 +1670,14 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         <div className="flex-1 min-w-[240px]">
           <input data-testid="deal-name-input" value={deal.name} onChange={(e) => set("name", e.target.value)} className="font-serif text-2xl font-semibold text-vx-text bg-transparent outline-none border-b border-transparent focus:border-vx-accent w-full" />
           {deal.maxBid != null && (
-            <div className="flex items-center gap-2 mt-1">
-              <span data-testid="deal-maxbid-header" className="text-sm font-mono font-semibold text-vx-accent-strong">Max bid {fmtGBP(deal.maxBid)}</span>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              <div data-testid="deal-maxbid-header" className="flex items-center gap-1.5 bg-vx-accent/10 border border-vx-accent/30 rounded-md px-2.5 py-1">
+                <span className="text-xs font-medium text-vx-accent-strong uppercase tracking-wide">Bid limit</span>
+                <span className="text-lg font-mono font-bold text-vx-accent-strong">{fmtGBP(deal.maxBidSafe ?? deal.maxBid)}</span>
+                {deal.maxBidSafe != null && deal.maxBidSafe !== deal.maxBid && (
+                  <span className="text-xs text-vx-muted">ceiling {fmtGBP(deal.maxBid)}</span>
+                )}
+              </div>
               {deal.maxBidLocked && <Badge tone="info">locked</Badge>}
               <span className="text-xs text-vx-muted">guide {fmtGBP(deal.price)}</span>
             </div>
@@ -1815,6 +1833,8 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
               <span className="block text-xs font-medium text-vx-muted mb-1">Guide price (reference only)</span>
               <div className="text-sm font-mono py-1.5">{fmtGBP(deal.price)}</div>
             </div>
+            <PctField label="Buyer's premium (%)" value={deal.buyersPremiumPct} onChange={(v) => set("buyersPremiumPct", v)} step={0.5} testId="buyers-premium-pct" />
+            <PctField label="Bid buffer — safety margin (%)" value={deal.bidBufferPct} onChange={(v) => set("bidBufferPct", v)} step={0.5} testId="bid-buffer-pct" />
           </div>
           <button data-testid="solve-maxbid" onClick={runSolveMaxBid} disabled={deal.maxBidLocked} className="flex items-center gap-1.5 bg-navy text-white text-sm font-medium px-4 py-2 rounded hover:bg-navy/90 disabled:opacity-40 disabled:cursor-not-allowed w-fit">
             <Sparkles size={14} />Solve max bid
@@ -1822,11 +1842,37 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
           {deal.maxBidLocked && <div className="text-xs text-vx-muted">Locked — unlock to change the target profit or re-solve.</div>}
 
           {deal.maxBid != null && (
-            <div className="bg-vx-surface rounded p-3 space-y-1">
-              <div data-testid="maxbid-value" className="text-2xl font-mono font-bold text-vx-accent-strong">{fmtGBP(deal.maxBid)}</div>
-              <div className="text-xs text-vx-muted">{deal.maxBidSolveNote || `At this price, profit meets your ${fmtGBP(targetProfitInput)} target — assuming the conservative GDV below, not whatever GDV this deal currently has configured.`}</div>
+            <div className="bg-vx-surface rounded-lg border border-vx-divider p-4 space-y-3">
+              {/* Recommended bid — primary headline */}
+              <div className="text-center">
+                <div className="text-xs font-semibold uppercase tracking-widest text-vx-accent mb-1">Recommended bid</div>
+                <div data-testid="maxbid-safe-value" className="text-5xl font-mono font-bold text-vx-accent-strong leading-none">{fmtGBP(deal.maxBidSafe ?? deal.maxBid)}</div>
+                {deal.maxBidSafe != null && deal.maxBidSafe !== deal.maxBid && (
+                  <div className="text-xs text-vx-muted mt-1">includes {fmtPct(deal.bidBufferPct ?? 0.02)} safety buffer below ceiling</div>
+                )}
+              </div>
+              {/* Breakdown */}
+              <div className="border-t border-vx-divider pt-3 space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-vx-muted">Ceiling (max bid, before buffer)</span>
+                  <span data-testid="maxbid-value" className="font-mono font-semibold text-vx-text">{fmtGBP(deal.maxBid)}</span>
+                </div>
+                {(Number(deal.buyersPremiumPct) || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-vx-muted">Buyer's premium ({fmtPct(deal.buyersPremiumPct)}) — included in solver</span>
+                    <span className="font-mono text-vx-muted">baked in ✓</span>
+                  </div>
+                )}
+                {deal.maxBidSafe != null && deal.maxBidSafe !== deal.maxBid && (
+                  <div className="flex justify-between">
+                    <span className="text-vx-muted">Buffer deducted ({fmtPct(deal.bidBufferPct ?? 0.02)})</span>
+                    <span className="font-mono text-vx-negative">−{fmtGBP(round2(deal.maxBid - deal.maxBidSafe))}</span>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-vx-muted">{deal.maxBidSolveNote || `At the ceiling, profit meets your ${fmtGBP(targetProfitInput)} target using a conservative GDV. Bid no higher than the recommended figure.`}</div>
               {deal.maxBidGdvLow != null && (
-                <div className="text-xs text-vx-muted flex items-center gap-2 flex-wrap">
+                <div className="text-xs text-vx-muted flex items-center gap-2 flex-wrap border-t border-vx-divider pt-2">
                   <span data-testid="maxbid-gdvlow">Conservative GDV assumed: <b>{fmtGBP(deal.maxBidGdvLow)}</b></span>
                   <button data-testid="apply-gdvlow" onClick={() => set("gdvOverride", deal.maxBidGdvLow)} className="text-vx-accent underline">Use this as the deal's GDV override</button>
                 </div>
@@ -2184,7 +2230,8 @@ function BriefPreview({ brief, deal }) {
           <table className="w-full border-collapse">
             <tbody>
               <BriefTableRow label="Guide / asking" value={_fmtAuditValue(brief.valuation.guidePrice)} illustrative={brief.valuation.guidePrice.isIllustrative} />
-              <BriefTableRow label="Max bid (solver)" value={brief.valuation.maxBid.value ? _fmtAuditValue(brief.valuation.maxBid) : "Not solved †"} illustrative={!brief.valuation.maxBid.value} />
+              <BriefTableRow label="Recommended bid" value={brief.valuation.maxBidSafe?.value ? _fmtAuditValue(brief.valuation.maxBidSafe) : (brief.valuation.maxBid.value ? _fmtAuditValue(brief.valuation.maxBid) : "Not solved †")} illustrative={!brief.valuation.maxBid.value} />
+              <BriefTableRow label="Ceiling (before buffer)" value={brief.valuation.maxBid.value ? _fmtAuditValue(brief.valuation.maxBid) : "—"} illustrative={!brief.valuation.maxBid.value} />
               <BriefTableRow label="GDV" value={_fmtAuditValue(brief.valuation.gdv)} illustrative={brief.valuation.gdv.isIllustrative} />
               <BriefTableRow
                 label="Comparables"
@@ -2293,9 +2340,10 @@ function BriefPreview({ brief, deal }) {
                     </tr>
                   )}
                   {[
-                    ["Guide price", brief.valuation.guidePrice],
-                    ["Max bid",     brief.valuation.maxBid],
-                    ["GDV (valuation)", brief.valuation.gdv],
+                    ["Guide price",           brief.valuation.guidePrice],
+                    ["Recommended bid",       brief.valuation.maxBidSafe],
+                    ["Ceiling (max bid)",     brief.valuation.maxBid],
+                    ["GDV (valuation)",       brief.valuation.gdv],
                   ].map(([label, v]) => v ? (
                     <tr key={label} className="border-b border-vx-divider last:border-0">
                       <td className="px-3 py-1.5 text-vx-text">{label}</td>
@@ -2622,34 +2670,36 @@ function AssumptionRow({ assumptionKey, assObj, onUpdate }) {
   const isGbp = assObj.unit === "£" || assObj.unit === "£/yr";
   const isPct = assObj.unit.includes("%");
   return (
-    <div className="grid grid-cols-12 gap-2 items-start py-2 border-b border-vx-divider last:border-0">
-      <div className="col-span-4 text-sm text-vx-text self-center">{ASSUMPTION_LABELS[assumptionKey] || assumptionKey}</div>
-      <div className="col-span-2">
-        {isGbp
-          ? <NumField label="" value={assObj.value} onChange={v => onUpdate({ ...assObj, value: v })} />
-          : <NumField label="" value={assObj.value} onChange={v => onUpdate({ ...assObj, value: v })} prefix="" step={isPct ? 0.01 : 0.1} />
-        }
+    <div className="py-2 border-b border-vx-divider last:border-0 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="flex-1 min-w-0 text-sm text-vx-text">{ASSUMPTION_LABELS[assumptionKey] || assumptionKey}</span>
+        <div className="w-24 shrink-0">
+          {isGbp
+            ? <NumField label="" value={assObj.value} onChange={v => onUpdate({ ...assObj, value: v })} />
+            : <NumField label="" value={assObj.value} onChange={v => onUpdate({ ...assObj, value: v })} prefix="" step={isPct ? 0.01 : 0.1} />
+          }
+        </div>
+        <span className="text-xs text-vx-muted shrink-0 w-6">{assObj.unit}</span>
       </div>
-      <div className="col-span-1 text-xs text-vx-muted self-center">{assObj.unit}</div>
-      <div className="col-span-3">
+      <div className="flex items-center gap-2">
         <input
           value={assObj.source || ""}
           onChange={e => onUpdate({ ...assObj, source: e.target.value })}
           placeholder="Source / notes"
-          className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent"
+          className="flex-1 min-w-0 text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent"
         />
-      </div>
-      <div className="col-span-2 flex flex-col items-start gap-0.5">
-        {assObj.isIllustrative ? (
-          <button onClick={() => onUpdate({ ...assObj, isIllustrative: false, lastVerified: Date.now() })}
-            className="text-xs text-vx-accent hover:underline">Mark verified</button>
-        ) : (
-          <span className="text-xs text-vx-positive flex items-center gap-1">
-            <CheckCircle2 size={11} />
-            {assObj.lastVerified ? new Date(assObj.lastVerified).toLocaleDateString("en-GB") : "Verified"}
-          </span>
-        )}
-        {assObj.isIllustrative && <Badge tone="warn">illustrative</Badge>}
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          {assObj.isIllustrative ? (
+            <button onClick={() => onUpdate({ ...assObj, isIllustrative: false, lastVerified: Date.now() })}
+              className="text-xs text-vx-accent hover:underline whitespace-nowrap">Mark verified</button>
+          ) : (
+            <span className="text-xs text-vx-positive flex items-center gap-1 whitespace-nowrap">
+              <CheckCircle2 size={11} />
+              {assObj.lastVerified ? new Date(assObj.lastVerified).toLocaleDateString("en-GB") : "Verified"}
+            </span>
+          )}
+          {assObj.isIllustrative && <Badge tone="warn">illustrative</Badge>}
+        </div>
       </div>
     </div>
   );
