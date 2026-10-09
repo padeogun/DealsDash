@@ -1,5 +1,68 @@
 # Appraisal v2 — Changelog
 
+## P01 — Pure Calculation Engine · 9 October 2026
+
+**Branch:** feature/appraisal-v2
+
+**Files created:**
+- `src/lib/appraisal/costs.js` — CostLine type, sumCosts (null propagation)
+- `src/lib/appraisal/valuation.js` — three-point valuation, basisValue, toValuation
+- `src/lib/appraisal/sdlt.js` — data-driven SDLT with effectiveFrom/verifyAt; Scotland/Wales guard; FTB warning
+- `src/lib/appraisal/solve.js` — bisection maxPrice solver; splitBudget
+- `src/lib/appraisal/bridging.js` — bridgeRelease (simple interest for retained day-one deduction)
+- `src/lib/appraisal/flip.js` — flipBudget, flipMaxOffer, flipBreakEvenSale, flipTargetSale
+- `src/lib/appraisal/brrr.js` — brrrBudget, brrrMaxOffer, breakEvenValuation, headroomPct, refiPosition, cashLeftIn
+- `src/lib/appraisal/capital.js` — capitalCost, recycling
+- `src/lib/appraisal/cashflow.js` — netMonthly, icrPass, monthlyMortgage
+- `src/lib/appraisal/stress.js` — 7 stress scenarios
+- `src/lib/appraisal/walkaway.js` — 5 walk-away tests with verdict
+- `src/lib/appraisal/index.js` — public re-export barrel
+- `src/lib/appraisal/__tests__/golden.test.js` — 13 golden cases (written first, confirmed failing)
+- `src/lib/appraisal/__tests__/additional.test.js` — 48 formula verification + edge case tests
+
+**Tests:** 95/95 passing (was 34/34 before P01; +61 new tests)
+
+**Golden case table — expected vs actual:**
+
+| Test | Expected | Actual | Status |
+|---|---|---|---|
+| flipBudget (15% profit) | 110800 | 110800 | ✓ |
+| splitBudget 110800 company → price | 105523.81 | 105523.81 | ✓ |
+| splitBudget 110800 company → SDLT | 5276.19 | 5276.19 | ✓ |
+| brrrBudget £20k left in | 200000 | 200000 | ✓ |
+| brrrBudget all money out | 180000 | 180000 | ✓ |
+| splitBudget 200000 company → price | 189252.34 | 189252.34 | ✓ |
+| splitBudget 200000 company → SDLT | 10747.66 | 10747.66 | ✓ |
+| bridgeRelease dayOneRelease | 63350 | 63350 | ✓ |
+| breakEvenValuation Katie | 268666.67 | 268666.67 | ✓ |
+| headroomPct 270k vs 268666 | ≈0.0049 | 0.0049 | ✓ |
+| refiPosition 280k | 8500 | 8500 | ✓ |
+| refiPosition 270k | 1000 | 1000 | ✓ |
+| refiPosition 260k | −6500 | −6500 | ✓ |
+| refiPosition 250k | −14000 | −14000 | ✓ |
+| refiPosition 240k | −21500 | −21500 | ✓ |
+| refiPosition Sean 85k | 12250 | 12250 | ✓ |
+| null propagation legals:null | incomplete | incomplete | ✓ |
+| Scotland SDLT → unsupported | unsupported | unsupported | ✓ |
+| FTB → warning, standard rate | warning | warning | ✓ |
+
+**Engine discrepancy (v1 vs v2) — Paul must decide before P02:**
+
+| Aspect | v1 (App.jsx `calcBridgeInterest`) | v2 (`bridgeRelease`) | Impact |
+|---|---|---|---|
+| Retained bridge interest | **Compound** `loan × ((1+r)^n − 1)` | **Simple** `loan × r × n` | £75k at 1%/mo for 12mo: compound = £9504, simple = £9000. Difference of **£504** on the day-one release. |
+
+For the training golden case (Katie), simple interest (£9000) matches the expected release of £63,350. Compound would give £62,846. **v2 (simple) is correct for that deal; v1 compound will be retired in P02 once confirmed.**
+
+**Open questions for Paul before P02:**
+1. Confirm the illustrative defaults in DECISIONS.md (flip profit % 15%, ICR 125%/5.5%, min net monthly £150, etc.)
+2. Confirm simple vs compound interest is correct for your specific lenders (v2 uses simple — matches training golden case).
+3. Did the backup script (`node scripts/backup-firestore.js`) run successfully?
+
+**Gate:** Awaiting Paul's sign-off before wiring the v2 engine into the UI (P02).
+
+---
+
 ## P00 — Audit and Setup · 9 October 2026
 
 **Files created:**
