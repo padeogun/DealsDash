@@ -1,5 +1,40 @@
 # Appraisal v2 — Changelog
 
+## P02 — Data Model Migration · 10 October 2026
+
+**Branch:** feature/appraisal-v2
+
+**Files created:**
+- `src/lib/migrations/v2.js` — idempotent migration functions: `migrateV2Deal`, `migrateV2Settings`, `emptyV2Block`, `DEFAULT_APPRAISAL_SETTINGS`, `migrationSummary`
+- `src/lib/migrations/v2.test.js` — 25 unit tests: settings migration, deal migration (empty/typical/idempotent/no-GDV variants), migrationSummary
+- `src/lib/docSize.js` — Firestore document size guard: `estimateDocSize`, `checkDocSize` (warn at 700 KB, block at 950 KB)
+
+**Files modified:**
+- `src/data/repo.js` — `saveDeal` now checks document size; throws if ≥ 950 KB, warns if ≥ 700 KB
+- `src/data/migrate.js` — added Pass 3 (schemaVersion 2 → 3): adds `deal.v2` block to all deals and `settings.appraisal` block; logs prefill summary
+- `src/App.jsx` — `newDeal()` now includes `v2: emptyV2Block()` so new deals start with the v2 structure; added import for `emptyV2Block`
+
+**Tests:** 120/120 passing (+25 migration tests)
+
+**Schema changes (additive only — RULE 14):**
+- `deal.v2` block added to all existing deals (pre-filled from v1 fields where unambiguous)
+- `settings.appraisal` block added with illustrative defaults (ICR 1.25, profitPct 0.15, etc.)
+- `schemaVersion` bumped: 2 → 3; `migratedV3At` timestamp added
+
+**Pre-fill summary (from migration logic):**
+- `v2.valuation.worst` — pre-filled when `gdvOverride > 0` (singlePoint mode)
+- `v2.valuation.comparables` — pre-filled from `deal.comps` where no GDV override exists
+- `v2.costLines` — pre-filled from `refurbItems` (average of low/high; zero-both-ends excluded per RULE 7)
+- `v2.funding.sources[0]` — pre-filled from `fundingMode`, `bridgeLTV`, `bridgeMonthlyRate`, etc.
+- `v2.refinance.ltv` — pre-filled from `btlLtv`
+- `v2.rent.monthly` — pre-filled from `monthlyRent` where > 0
+
+**v1 fields preserved:** All existing deal fields untouched (RULE 14). v1 engine still runs alongside v2 while `showV1Comparison: true` (from `DEFAULT_APPRAISAL_SETTINGS`).
+
+**Gate:** P02 complete. Awaiting Paul's sign-off before proceeding to P03 (Deals Appraisal UI).
+
+---
+
 ## P01 — Pure Calculation Engine · 9 October 2026
 
 **Branch:** feature/appraisal-v2

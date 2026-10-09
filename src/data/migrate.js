@@ -1,6 +1,7 @@
 import { doc, getDoc, getDocs, writeBatch } from "firebase/firestore";
 import * as repo from "./repo.js";
 import { seedDefaultBuyBoxIfNeeded } from "./seedDefaults.js";
+import { migrateV2Deal, migrateV2Settings, migrationSummary } from "../lib/migrations/v2.js";
 
 /**
  * Idempotent boot-time migration. Runs two passes:
@@ -10,6 +11,11 @@ import { seedDefaultBuyBoxIfNeeded } from "./seedDefaults.js";
  *
  * Pass 2 — Default buy box seed. Skipped when buyBoxes collection is non-empty.
  *   Reads any legacy strategyProfile / thresholds from settings to pre-populate.
+ *
+ * Pass 3 — Appraisal v2 schema fields (schemaVersion 2 → 3). Skipped when
+ *   settings/app.schemaVersion >= 3. Adds deal.v2 block to every deal and
+ *   settings.appraisal block to settings. Idempotent: already-migrated docs
+ *   are returned unchanged by migrateV2Deal / migrateV2Settings.
  *
  * @param {import("firebase/firestore").Firestore} db
  * @param {string} uid
@@ -101,4 +107,35 @@ export async function runMigrationIfNeeded(db, uid, onProgress) {
   const latestSettingsSnap = await getDoc(repo.settingsDocRef(db, uid));
   const latestSettings = latestSettingsSnap.exists() ? latestSettingsSnap.data() : {};
   await seedDefaultBuyBoxIfNeeded(db, uid, latestSettings);
+
+  // ── Pass 3: appraisal v2 schema fields (schemaVersion 2 → 3) ─────────────
+  const needsAppraisalV2 = (latestSettings?.schemaVersion || 1) < 3;
+  if (needsAppraisalV2) {
+    onProgress?.("Adding appraisal v2 fields to deals…");
+
+    // Migrate settings — adds appraisal block with illustrative defaults
+    const migratedSettings = migrateV2Settings(latestSettings);
+    await repo.saveSettings(db, uid, { ...migratedSettings, schemaVersion: 3, migratedV3At: Date.now() });
+
+    // Migrate all deals — adds v2 block, pre-fills from v1 fields where unambiguous
+    const dealsSnap = await getDocs(repo.dealsColRef(db, uid));
+    const deals = dealsSnap.docs.map(d => d.data());
+    const migratedDeals = deals.map(migrateV2Deal);
+
+    for (let i = 0; i < migratedDeals.length; i += 499) {
+      const batch = writeBatch(db);
+      migratedDeals.slice(i, i + 499).forEach(deal =>
+        batch.set(repo.dealDocRef(db, uid, deal.id), deal)
+      );
+      await batch.commit();
+    }
+
+    const summary = migrationSummary(migratedDeals);
+    console.log(
+      `[DealsDash] Migration v3 complete. ${summary.total} deal(s). ` +
+      `Pre-filled: valuation=${summary.prefilled.valuation}, ` +
+      `costLines=${summary.prefilled.costLines}, ` +
+      `rent=${summary.prefilled.rent}.`
+    );
+  }
 }

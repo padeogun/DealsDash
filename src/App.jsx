@@ -33,6 +33,7 @@ import SurveyModule from "./modules/survey/SurveyModule.jsx";
 import { defaultRates } from "./modules/survey/data/rates.js";
 import { mergeRefurbItems } from "./modules/survey/lib/applyToDeal.js";
 import { Badge as VxBadge } from "./components/Badge.jsx";
+import { emptyV2Block } from "./lib/migrations/v2.js";
 import WorkspaceView from "./components/WorkspaceView.jsx";
 import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
@@ -491,6 +492,7 @@ function newDeal() {
     listingType: "other", // "auction" | "agent" | "d2v" | "trader" | "other" — carried from the lead; the viewing survey reads it
     survey: null,         // viewing survey state (src/modules/survey) — lives on the deal, single-document model
     surveyApplied: null,  // { at, total, lines, unconfirmed, needsEpc } — stamped by "Apply to deal"
+    v2: emptyV2Block(),   // appraisal v2 fields — all costs null until user enters them (RULE 7)
   };
 }
 
