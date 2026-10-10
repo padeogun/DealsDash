@@ -1,5 +1,40 @@
 # Appraisal v2 — Changelog
 
+## P08 — National Area Screener · 10 October 2026
+
+**Files created:**
+- `src/components/ScreenerView.jsx` — 600-line React component: strategy toggle (Flip/BRRR), property type, max entry price, nation filter, per-factor weights panel (0–10, with reset), sortable council table with rank, score, price, yield, 12m growth, sales, flip rate columns, row drill-down to district table (E/W only), "Send to Sourcing" multi-select action, OGL footer
+- `public/data/screener.json` — pre-built data: 360 councils, 4,452 district rows, 0.7 MB (HPI, PIPR, Price Paid)
+- `docs/SCREENER_BRIEF.md` — build brief documenting data contract, scoring spec, open items, acceptance checks
+- `docs/SECURITY_LOG.md` — security review log (2 entries: data build + UI)
+- `docs/build_screener.py` — monthly data build (DuckDB + pandas)
+- `docs/requirements-screener.txt` — Python dependencies
+
+**Files modified:**
+- `src/App.jsx` — `ScreenerView` already imported; "Area Screener" sidebar tab already present; `addTargetAreas` function and `tab === "screener"` render already wired; no changes needed
+- `.gitignore` — `.screener-cache/` already present
+
+**Tests:** 177/177 passing (no new pure-JS maths to unit test; scoring runs in-browser against real data)
+
+**Acceptance checks (all pass):**
+- BRRR / Terraced / £190k cap / England: Rochdale (5.87%, £172k), Oldham (6.02%, £184k), Tameside (6.04%, £184k) all appear
+- Rochdale drill-down: OL11 (4 flips), OL12 (4 flips), OL16 (8 flips) — all non-zero
+- No `dangerouslySetInnerHTML` anywhere in ScreenerView.jsx
+
+**Security:** reviewed 2026-10-03 (data build) and 2026-10-03 (UI) — no outstanding issues. See `docs/SECURITY_LOG.md`.
+
+**Key design decisions:**
+- Scoring is browser-side: changing weights never requires a network call
+- Missing factors excluded from that area's denominator; area flagged "partial data"
+- NI gets no BRRR score (PIPR suppresses NI rents); shown as "No BRRR†" with footnote
+- Distance factor hidden until ONS council centroids are added (open item #1 in brief)
+- Monthly refresh: `python docs/build_screener.py` → `.\update-dealsdash.bat`
+
+**Data model additions (additive — RULE 14):**
+- `settings.screener` — `{ strategy, ptype, maxPrice, nations, flipWeights, brrrWeights }` written by ScreenerView via `applySettings`
+
+---
+
 ## P07 — Viewing → Offer → Acceptance Funnel · 10 October 2026
 
 **Files created:**

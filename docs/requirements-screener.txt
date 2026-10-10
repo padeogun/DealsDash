@@ -1,0 +1,5 @@
+# Screener build dependencies — install with: pip install -r scripts/requirements-screener.txt
+duckdb>=1.1
+pandas>=2.2
+openpyxl>=3.1
+defusedxml>=0.7  # openpyxl uses it automatically to harden XML parsing of the ONS workbook
