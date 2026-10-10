@@ -940,7 +940,7 @@ exports.checkEpcRegister = onCall({ secrets: [EPC_API_KEY], cors: true, timeoutS
 
   let res;
   try {
-    res = await fetch(`${EPC_API_URL}?postcode=${encodeURIComponent(postcode.trim())}`, {
+    res = await fetch(`${EPC_API_URL}?postcode=${encodeURIComponent(postcode.trim().replace(/\s+/g, ""))}`, {
       headers: { Authorization: `Bearer ${EPC_API_KEY.value()}`, Accept: "application/json" },
     });
   } catch (e) {
