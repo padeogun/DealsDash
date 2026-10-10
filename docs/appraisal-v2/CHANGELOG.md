@@ -6,11 +6,10 @@
 
 **Results:** 0 Critical · 2 High · 2 Medium · 2 Low · 22 None
 
-**No fixes applied this pass** — all actionable findings require Paul's approval (see open items).
-
-**Open items blocking release (High):**
-- D: `npm audit fix` in `functions/` + `firebase-admin` ≥14.5.0 (proxy-addr critical, node-forge high)
-- E: Firebase JS client SDK patch upgrade (`@grpc/grpc-js` high via `@firebase/firestore`)
+**Fixes applied (2026-10-10 follow-up):**
+- **D (High — resolved):** `npm audit fix` (non-breaking) + `firebase-admin@14.5.0` in `functions/`. Result: 0 vulnerabilities in functions/. Tested on emulator — all 10 functions loaded, app functional.
+- **E (High — accepted risk):** Firebase JS client `@grpc/grpc-js` advisory: unfixable in firebase@12.x without a major downgrade. Updated firebase@12.17.1 → 12.19.0 (latest 12.x patch). Advisory has no runtime impact — grpc transport is not used by the browser Firebase SDK (uses WebChannel/HTTP).
+- Remaining dev-tool advisories (vitest/tinypool test-time, tailwindcss/braces build-time, esbuild dev-server-only) accepted as non-production risks.
 
 **Open items not blocking release (Medium/Low):**
 - B: SSRF host allow-list in `recheckLeadStatus` (defence-in-depth; auth gate is primary protection)
