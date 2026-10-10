@@ -40,6 +40,7 @@ import UserGuideView from "./components/UserGuideView.jsx";
 import AppraisalV2Tab from "./components/AppraisalV2Tab.jsx";
 import AuctionAssessmentV2 from "./components/AuctionAssessmentV2.jsx";
 import { recycling, capitalCost } from "./lib/appraisal/capital.js";
+import { calcFunnelMonth, calcFunnelRolling, sortStandingOffers, calcPaceIndicator, isFollowUpDue } from "./lib/appraisal/funnel.js";
 
 /* =================================================================================
    FIREBASE — Google Sign-In gated to one account, Firestore for cross-device sync
@@ -468,7 +469,7 @@ const NOTIFICATION_DEFAULTS = {
     lenderReportDue: false,
   },
 };
-const DEFAULT_SETTINGS = { monthlyBurn: 1800, targetMonthlyIncome: 30000, planning: { avgCashPerDeal: 30000, avgDurationMonths: 7, avgNetProfitPerDeal: 20000, maxConcurrentDeals: 3 }, surveyRates: null, lenderFundSize: 50000, lenderFundRatePct: 0.08, notifications: NOTIFICATION_DEFAULTS };
+const DEFAULT_SETTINGS = { monthlyBurn: 1800, targetMonthlyIncome: 30000, planning: { avgCashPerDeal: 30000, avgDurationMonths: 7, avgNetProfitPerDeal: 20000, maxConcurrentDeals: 3 }, surveyRates: null, lenderFundSize: 50000, lenderFundRatePct: 0.08, notifications: NOTIFICATION_DEFAULTS, appraisal: { viewingTargetPerMonth: 20 } };
 
 function newDeal() {
   return {
@@ -3490,6 +3491,7 @@ function newLead() {
     areaIntelligence: null,
     epcCheck: null,
     construction: null, // P06: { confirmedType, frontage, notes, streetConstructionMix, streetFrontageMix, streetGoodAvoidEnd, streetNotes }
+    viewings: [],       // P07: [{ id, date, type, agentId, offerMade, offerAmount, outcome, followUpDate, notes }]
     pipelineStage: "Watching",
     auctionV2: null,
   };
@@ -4290,7 +4292,248 @@ function PipelineKanban({ leads, onMoveLead, openLeadId, onOpenLead, onPromote, 
   );
 }
 
-function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, marketStats, targetAreas = [], onClearTargetAreas }) {
+/* ─── FunnelView ──────────────────────────────────────────────────── P07 ─── */
+function FunnelView({ leads, settings, onSettingsChange }) {
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const monthly   = calcFunnelMonth(leads, thisMonth);
+  const rolling   = calcFunnelRolling(leads, 3);
+  const pace      = calcPaceIndicator(leads, 3);
+  const standing  = sortStandingOffers(leads);
+
+  const target = Number(settings?.appraisal?.viewingTargetPerMonth) || 20;
+  const [editTarget, setEditTarget] = useState(false);
+  const [targetDraft, setTargetDraft] = useState(String(target));
+  const pct = Math.min(100, Math.round((monthly.viewings / target) * 100));
+
+  function saveTarget() {
+    const n = parseInt(targetDraft, 10);
+    if (n > 0 && onSettingsChange) {
+      onSettingsChange({ ...settings, appraisal: { ...(settings?.appraisal || {}), viewingTargetPerMonth: n } });
+    }
+    setEditTarget(false);
+  }
+
+  function FunnelBar({ label, n, d, rate }) {
+    const pctVal = Math.min(100, Math.round(rate * 100));
+    return (
+      <div className="space-y-1">
+        <div className="flex justify-between text-xs text-vx-muted">
+          <span>{label}</span>
+          <span className="font-mono text-vx-text font-semibold">{n}/{d} ({pctVal}%)</span>
+        </div>
+        <div className="h-1.5 bg-vx-surface rounded-full overflow-hidden">
+          <div className="h-full bg-vx-accent-strong rounded-full" style={{ width: `${pctVal}%` }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-vx-muted">This month's viewings</span>
+          <div className="flex items-center gap-2">
+            {editTarget ? (
+              <>
+                <input type="number" min="1" max="999" value={targetDraft} onChange={(e) => setTargetDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveTarget()}
+                  className="w-16 text-xs border border-vx-border rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-vx-accent" />
+                <button onClick={saveTarget} className="text-xs text-vx-accent font-medium hover:underline">Save</button>
+                <button onClick={() => setEditTarget(false)} className="text-xs text-vx-muted hover:text-vx-text">Cancel</button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-vx-muted">Target: <span className="font-semibold text-vx-text">{target}</span></span>
+                <button onClick={() => { setTargetDraft(String(target)); setEditTarget(true); }} className="text-xs text-vx-accent hover:underline">Edit</button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex items-end gap-3 mb-2">
+          <span className="text-3xl font-mono font-bold text-vx-text">{monthly.viewings}</span>
+          <span className="text-sm text-vx-muted mb-1">of {target} ({pct}%)</span>
+        </div>
+        <div className="h-2.5 bg-vx-surface rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-vx-positive" : pct >= 70 ? "bg-vx-accent-strong" : "bg-vx-caution"}`} style={{ width: `${pct}%` }} />
+        </div>
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">This month</div>
+          <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+            {[["Viewings", monthly.viewings], ["Offers", monthly.offers], ["Accepted", monthly.accepted]].map(([lbl, val]) => (
+              <div key={lbl}>
+                <div className="text-2xl font-mono font-bold text-vx-text">{val}</div>
+                <div className="text-xs text-vx-muted">{lbl}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <FunnelBar label="Offer rate (offers ÷ viewings)" n={monthly.offers} d={monthly.viewings} rate={monthly.offerRate} />
+            <FunnelBar label="Accept rate (accepted ÷ offers)" n={monthly.accepted} d={monthly.offers} rate={monthly.acceptRate} />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">Rolling 3 months</div>
+          <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+            {[["Viewings", rolling.viewings], ["Offers", rolling.offers], ["Accepted", rolling.accepted]].map(([lbl, val]) => (
+              <div key={lbl}>
+                <div className="text-2xl font-mono font-bold text-vx-text">{val}</div>
+                <div className="text-xs text-vx-muted">{lbl}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <FunnelBar label="Offer rate" n={rolling.offers} d={rolling.viewings} rate={rolling.offerRate} />
+            <FunnelBar label="Accept rate" n={rolling.accepted} d={rolling.offers} rate={rolling.acceptRate} />
+          </div>
+          {pace && (
+            <div className="mt-3 pt-3 border-t border-vx-divider text-xs text-vx-muted">
+              Pace: ~<span className="font-semibold text-vx-text">{pace.perYear}</span> deal{pace.perYear !== 1 ? "s" : ""}/year at current rate
+              <span className="ml-1 text-vx-muted/70">— Illustrative only</span>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {standing.length > 0 && (
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">Standing offers ({standing.length})</div>
+          <div className="space-y-2">
+            {standing.map(({ lead, viewing }, idx) => {
+              const due = isFollowUpDue(viewing);
+              return (
+                <div key={viewing.id || idx} className={`flex items-center justify-between gap-3 rounded p-2 text-sm ${due ? "bg-amber-50 border border-amber-200" : "bg-vx-surface"}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-vx-text truncate">{lead.address || "Untitled lead"}</div>
+                    {viewing.offerAmount ? <div className="text-xs text-vx-muted">Offer: {fmtGBP(viewing.offerAmount)}</div> : null}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    {viewing.followUpDate
+                      ? <div className={`text-xs font-medium ${due ? "text-vx-caution" : "text-vx-muted"}`}>{due ? "Follow-up due " : "Follow-up "}{viewing.followUpDate}</div>
+                      : <div className="text-xs text-vx-muted">No follow-up date</div>}
+                    {viewing.notes && <div className="text-xs text-vx-muted truncate max-w-[180px]">{viewing.notes}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {standing.length === 0 && <div className="text-center py-4 text-vx-muted text-sm">No standing offers right now.</div>}
+    </div>
+  );
+}
+
+/* ─── AgentsView ──────────────────────────────────────────────────── P07 ─── */
+function AgentsView({ leads, agents, setAgents }) {
+  const [form, setForm] = useState(null);
+
+  function agentStats(agentId) {
+    let viewings = 0, offers = 0, accepted = 0, lastDate = null;
+    for (const lead of leads) {
+      for (const v of (lead.viewings || [])) {
+        if (v.agentId !== agentId) continue;
+        viewings++;
+        if (v.offerMade) offers++;
+        if (v.outcome === "accepted") accepted++;
+        if (v.date && (!lastDate || v.date > lastDate)) lastDate = v.date;
+      }
+    }
+    const daysSince = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : null;
+    return { viewings, offers, accepted, lastDate, daysSince };
+  }
+
+  function saveForm() {
+    if (!form?.name?.trim()) return;
+    const isNew = !form.id;
+    const agent = isNew ? { ...form, id: uid(), createdAt: Date.now() } : { ...form };
+    setAgents(isNew ? [...agents, agent] : agents.map((a) => (a.id === agent.id ? agent : a)));
+    setForm(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-vx-muted">{agents.length} agent{agents.length !== 1 ? "s" : ""} tracked</span>
+        <button onClick={() => setForm({ name: "", phone: "", email: "", area: "", notes: "" })} className="flex items-center gap-1 text-xs font-medium bg-navy text-white px-2.5 py-1.5 rounded hover:bg-navy/90">
+          <Plus size={13} />Add agent
+        </button>
+      </div>
+
+      {form !== null && (
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">{form.id ? "Edit agent" : "New agent"}</div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <TextField label="Name *" value={form.name || ""} onChange={(v) => setForm({ ...form, name: v })} placeholder="e.g. Sarah Jones — Better Buy Properties" />
+            <TextField label="Phone" value={form.phone || ""} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+44 7700 900000" />
+            <TextField label="Email" value={form.email || ""} onChange={(v) => setForm({ ...form, email: v })} placeholder="agent@example.com" />
+            <TextField label="Area / patch" value={form.area || ""} onChange={(v) => setForm({ ...form, area: v })} placeholder="e.g. OL1, OL4, Oldham" />
+            <div className="md:col-span-2">
+              <TextField label="Notes" value={form.notes || ""} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Specialism, relationship, referral source…" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button onClick={saveForm} disabled={!form.name?.trim()} className="text-xs font-medium bg-navy text-white px-3 py-1.5 rounded hover:bg-navy/90 disabled:opacity-40">Save</button>
+            <button onClick={() => setForm(null)} className="text-xs font-medium text-vx-muted hover:text-vx-text px-3 py-1.5">Cancel</button>
+          </div>
+        </Card>
+      )}
+
+      {agents.length === 0 && form === null && (
+        <div className="text-center py-6 text-vx-muted text-sm">No agents yet. Add the estate agents and sourcing contacts who feed you viewings.</div>
+      )}
+
+      <div className="grid gap-3">
+        {agents.map((agent) => {
+          const stats = agentStats(agent.id);
+          const stale = stats.daysSince !== null && stats.daysSince > 30;
+          return (
+            <Card key={agent.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-serif font-semibold text-vx-text">{agent.name}</span>
+                    {stale && <Badge tone="warn">No contact {stats.daysSince}d</Badge>}
+                  </div>
+                  <div className="text-xs text-vx-muted mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                    {agent.phone && <span className="flex items-center gap-1"><Phone size={11} />{agent.phone}</span>}
+                    {agent.email && <span className="flex items-center gap-1"><Mail size={11} />{agent.email}</span>}
+                    {agent.area && <span className="flex items-center gap-1"><MapPin size={11} />{agent.area}</span>}
+                  </div>
+                  {agent.notes && <div className="text-xs text-vx-muted mt-1">{agent.notes}</div>}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => setForm({ ...agent })} className="text-vx-muted hover:text-vx-text p-1"><Pencil size={14} /></button>
+                  <button onClick={() => setAgents(agents.filter((a) => a.id !== agent.id))} className="text-vx-muted hover:text-vx-negative p-1"><Trash2 size={14} /></button>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-vx-divider flex items-center gap-5">
+                {[["Viewings", stats.viewings], ["Offers", stats.offers], ["Accepted", stats.accepted]].map(([lbl, val]) => (
+                  <div key={lbl} className="text-center">
+                    <div className="font-mono font-bold text-vx-text">{val}</div>
+                    <div className="text-xs text-vx-muted">{lbl}</div>
+                  </div>
+                ))}
+                <div className="ml-auto text-right">
+                  {stats.lastDate
+                    ? <div className={`text-xs ${stale ? "text-vx-caution font-medium" : "text-vx-muted"}`}>Last activity {stats.lastDate} ({stats.daysSince}d ago)</div>
+                    : <div className="text-xs text-vx-muted">No viewings yet</div>}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, marketStats, targetAreas = [], onClearTargetAreas, agents = [], setAgents, settings, onSettingsChange }) {
   const [filter, setFilter] = useState("all");
   const [verifyingId, setVerifyingId] = useState(null);
   const [verifyError, setVerifyError] = useState(null);
@@ -4497,8 +4740,9 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-1 bg-vx-surface-2 border border-vx-divider rounded p-0.5">
-          <button onClick={() => setViewMode("list")} className={`px-3 py-1 text-xs rounded font-medium transition-colors ${viewMode === "list" ? "bg-vx-bg shadow-sm text-vx-text" : "text-vx-muted hover:text-vx-text"}`}>List</button>
-          <button onClick={() => setViewMode("kanban")} className={`px-3 py-1 text-xs rounded font-medium transition-colors ${viewMode === "kanban" ? "bg-vx-bg shadow-sm text-vx-text" : "text-vx-muted hover:text-vx-text"}`}>Kanban</button>
+          {["list", "kanban", "funnel", "agents"].map((m) => (
+            <button key={m} onClick={() => setViewMode(m)} className={`px-3 py-1 text-xs rounded font-medium transition-colors capitalize ${viewMode === m ? "bg-vx-bg shadow-sm text-vx-text" : "text-vx-muted hover:text-vx-text"}`}>{m}</button>
+          ))}
         </div>
         {viewMode === "list" && (
           <div className="flex gap-1.5 flex-wrap">
@@ -4524,7 +4768,7 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
         />
       )}
 
-      {viewMode === "list" ? (
+      {viewMode === "list" && (
         <>
           {visible.length === 0 ? (
             <Card className="text-center py-10 text-vx-muted text-sm">
@@ -4545,12 +4789,15 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
                   stale={isStale(lead)}
                   ownerUid={ownerUid}
                   marketStats={marketStats}
+                  agents={agents}
                 />
               ))}
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {viewMode === "kanban" && (
         <PipelineKanban
           leads={leads}
           onMoveLead={moveLead}
@@ -4564,6 +4811,22 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
           ownerUid={ownerUid}
           onChange={updateLead}
           marketStats={marketStats}
+        />
+      )}
+
+      {viewMode === "funnel" && (
+        <FunnelView
+          leads={leads}
+          settings={settings}
+          onSettingsChange={onSettingsChange}
+        />
+      )}
+
+      {viewMode === "agents" && (
+        <AgentsView
+          leads={leads}
+          agents={agents}
+          setAgents={setAgents}
         />
       )}
 
@@ -4834,7 +5097,7 @@ function TriageBlock({ lead, onChange }) {
   );
 }
 
-function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, onPromote, stale, ownerUid, marketStats, defaultOpen = false }) {
+function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, onPromote, stale, ownerUid, marketStats, agents = [], defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [statusCheckError, setStatusCheckError] = useState(null);
@@ -4847,6 +5110,16 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
   }
   function addComp() { onChange({ comparables: [...lead.comparables, { label: "", value: "" }] }); }
   function removeComp(idx) { onChange({ comparables: lead.comparables.filter((_, i) => i !== idx) }); }
+
+  function addViewing() {
+    const v = { id: uid(), date: new Date().toISOString().slice(0, 10), type: "in_person", agentId: "", offerMade: false, offerAmount: null, outcome: "none", followUpDate: "", notes: "" };
+    onChange({ viewings: [...(lead.viewings || []), v] });
+  }
+  function setViewing(idx, patch) {
+    const arr = (lead.viewings || []).map((v, i) => i === idx ? { ...v, ...patch } : v);
+    onChange({ viewings: arr });
+  }
+  function removeViewing(idx) { onChange({ viewings: (lead.viewings || []).filter((_, i) => i !== idx) }); }
 
   async function recheckStatus() {
     setCheckingStatus(true);
@@ -4990,6 +5263,80 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
               ))}
             </div>
             <button onClick={addComp} className="flex items-center gap-1 text-xs text-vx-accent font-medium hover:underline mt-2"><Plus size={12} />Add comparable manually</button>
+          </div>
+
+          {/* Viewing log — P07 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-vx-muted">Viewings ({(lead.viewings || []).length})</span>
+              <button onClick={addViewing} className="flex items-center gap-1 text-xs font-medium text-vx-accent hover:underline"><Plus size={12} />Log viewing</button>
+            </div>
+            {(lead.viewings || []).length === 0 && (
+              <div className="text-xs text-vx-muted py-2">No viewings logged yet.</div>
+            )}
+            <div className="space-y-3">
+              {(lead.viewings || []).map((v, idx) => {
+                const due = isFollowUpDue(v);
+                return (
+                  <div key={v.id || idx} className={`rounded border p-3 space-y-2 text-sm ${due ? "border-amber-300 bg-amber-50" : "border-vx-border bg-vx-surface"}`}>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Date</label>
+                        <input type="date" value={v.date || ""} onChange={(e) => setViewing(idx, { date: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Type</label>
+                        <select value={v.type || "in_person"} onChange={(e) => setViewing(idx, { type: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg">
+                          <option value="in_person">In person</option>
+                          <option value="virtual">Virtual</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Agent</label>
+                        <select value={v.agentId || ""} onChange={(e) => setViewing(idx, { agentId: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg">
+                          <option value="">— none —</option>
+                          {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Outcome</label>
+                        <select value={v.outcome || "none"} onChange={(e) => setViewing(idx, { outcome: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg">
+                          <option value="none">No decision</option>
+                          <option value="standing">Standing offer</option>
+                          <option value="accepted">Accepted</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="withdrawn">Withdrawn</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!v.offerMade} onChange={(e) => setViewing(idx, { offerMade: e.target.checked, offerAmount: e.target.checked ? v.offerAmount : null })} className="w-3.5 h-3.5" />
+                        Offer made
+                      </label>
+                      {v.offerMade && (
+                        <div>
+                          <label className="block text-xs text-vx-muted mb-0.5">Offer amount</label>
+                          <input type="number" min="0" step="1000" value={v.offerAmount ?? ""} onChange={(e) => setViewing(idx, { offerAmount: e.target.value === "" ? null : Number(e.target.value) })} placeholder="£" className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                        </div>
+                      )}
+                      {v.outcome === "standing" && (
+                        <div className={v.offerMade ? "md:col-start-3" : "md:col-start-2"}>
+                          <label className="block text-xs text-vx-muted mb-0.5">Follow-up date {due && <span className="text-vx-caution font-semibold">· Due!</span>}</label>
+                          <input type="date" value={v.followUpDate || ""} onChange={(e) => setViewing(idx, { followUpDate: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                        </div>
+                      )}
+                      <div className="md:col-start-4 flex justify-end">
+                        <button onClick={() => removeViewing(idx)} className="text-vx-muted hover:text-vx-negative p-1"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                    <div>
+                      <input type="text" value={v.notes || ""} onChange={(e) => setViewing(idx, { notes: e.target.value })} placeholder="Notes (outcome detail, vendor reaction, condition flags…)" className="w-full text-xs border border-vx-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <label className="block">
@@ -5641,6 +5988,7 @@ function AppInner({ user }) {
   const [contacts, setContacts] = useState([]);
   const [properties, setProperties] = useState([]);
   const [buyBoxes, setBuyBoxes] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [marketStats, setMarketStats] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -5674,7 +6022,7 @@ function AppInner({ user }) {
     let unsubs = [];
     let cancelled = false;
     let dealsReady = false, leadsReady = false, ledgerReady = false,
-        contactsReady = false, propertiesReady = false,
+        contactsReady = false, propertiesReady = false, agentsReady = false,
         settingsReady = false, plannerReady = false, buyBoxesReady = false;
     let latestSettingsData = null;
     let latestPlannerData = null;
@@ -5690,7 +6038,7 @@ function AppInner({ user }) {
 
     function checkAllReady() {
       if (dealsReady && leadsReady && ledgerReady && contactsReady &&
-          propertiesReady && settingsReady && plannerReady && buyBoxesReady) {
+          propertiesReady && agentsReady && settingsReady && plannerReady && buyBoxesReady) {
         setLoaded(true);
         setMigrateNote(null);
       }
@@ -5758,6 +6106,12 @@ function AppInner({ user }) {
         if (!buyBoxesReady) { buyBoxesReady = true; checkAllReady(); }
       }, errHandler));
 
+      unsubs.push(onSnapshot(repo.agentsColRef(db, user.uid), snap => {
+        if (cancelled) return;
+        setAgents(snap.docs.map(d => d.data()));
+        if (!agentsReady) { agentsReady = true; checkAllReady(); }
+      }, errHandler));
+
       // Market stats — shared collection, not user-scoped; does not gate app load
       unsubs.push(onSnapshot(repo.marketStatsColRef(db), snap => {
         if (cancelled) return;
@@ -5816,6 +6170,14 @@ function AppInner({ user }) {
     prevLeads.filter(l => !currentIds.has(l.id))
       .forEach(l => repo.deleteLead(db, user.uid, l.id).catch(() => setStorageOk(false)));
     setLeads(newLeads);
+  }
+
+  function syncAgents(newAgents, prevAgents) {
+    const currentIds = new Set(newAgents.map(a => a.id));
+    newAgents.forEach(a => repo.saveAgent(db, user.uid, a).catch(() => setStorageOk(false)));
+    prevAgents.filter(a => !currentIds.has(a.id))
+      .forEach(a => repo.deleteAgent(db, user.uid, a.id).catch(() => setStorageOk(false)));
+    setAgents(newAgents);
   }
 
   function syncLedger(newLedger, prevLedger) {
@@ -5952,7 +6314,7 @@ function AppInner({ user }) {
         <main className="flex-1 overflow-x-hidden" style={{ padding: isDesktop ? 24 : 14, overflowY: isDesktop ? "auto" : "visible" }}>
           {!storageOk && <StorageWarning />}
           {tab === "dashboard" && <DashboardView deals={deals} ledger={ledger} properties={properties} settings={settings} thresholds={effectiveThresholds} goToDeals={() => setTab("deals")} goToRisk={() => setTab("risk")} goToProperties={() => setTab("properties")} />}
-          {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} />}
+          {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} agents={agents} setAgents={(newAgents) => syncAgents(newAgents, agents)} settings={settings} onSettingsChange={applySettings} />}
           {tab === "screener" && <ScreenerView settings={settings} onSettingsChange={applySettings} onAddTargetAreas={addTargetAreas} />}
           {tab === "deals" && !selectedDeal && <DealsListView deals={deals} thresholds={effectiveThresholds} onSelect={setSelectedId} onAdd={addDeal} onAddExample={addExampleDeal} onDelete={deleteDeal} marketStats={marketStats} />}
           {tab === "deals" && selectedDeal && <DealDetailView deal={selectedDeal} onChange={(p) => updateDeal(selectedDeal.id, p)} onDelete={deleteDeal} onBack={() => setSelectedId(null)} thresholds={effectiveThresholds} defaultBuyBox={defaultBuyBox} settings={settings} onMoveToRental={() => moveDealToRentalManagement(selectedDeal)} alreadyLinkedProperty={properties.find((p) => p.dealId === selectedDeal.id)} ownerUid={user.uid} surveyRates={settings.surveyRates} onSurveyRatesChange={(surveyRates) => applySettings({ ...settings, surveyRates })} marketStats={marketStats} />}

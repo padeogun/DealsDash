@@ -14,3 +14,4 @@ export * from "./stress.js";
 export * from "./walkaway.js";
 export * from "./auction.js";
 export * from "./construction.js";
+export * from "./funnel.js";

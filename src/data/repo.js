@@ -21,6 +21,10 @@ export const ledgerDocRef     = (db, uid, id) => doc(db, "users", uid, "ledger",
 export const contactsColRef   = (db, uid) => collection(db, "users", uid, "contacts");
 export const contactDocRef    = (db, uid, id) => doc(db, "users", uid, "contacts", id);
 
+// Agents — separate from settings so agent history survives a settings reset.
+export const agentsColRef     = (db, uid) => collection(db, "users", uid, "agents");
+export const agentDocRef      = (db, uid, id) => doc(db, "users", uid, "agents", id);
+
 export const propertiesColRef = (db, uid) => collection(db, "users", uid, "properties");
 export const propertyDocRef   = (db, uid, id) => doc(db, "users", uid, "properties", id);
 
@@ -42,6 +46,9 @@ export const deleteLedgerEntry = (db, uid, id)      => deleteDoc(ledgerDocRef(db
 
 export const saveContact      = (db, uid, contact)  => setDoc(contactDocRef(db, uid, contact.id), contact);
 export const deleteContact    = (db, uid, id)       => deleteDoc(contactDocRef(db, uid, id));
+
+export const saveAgent        = (db, uid, agent)    => setDoc(agentDocRef(db, uid, agent.id), agent);
+export const deleteAgent      = (db, uid, id)       => deleteDoc(agentDocRef(db, uid, id));
 
 export const saveProperty     = (db, uid, property) => setDoc(propertyDocRef(db, uid, property.id), property);
 export const deleteProperty   = (db, uid, id)       => deleteDoc(propertyDocRef(db, uid, id));

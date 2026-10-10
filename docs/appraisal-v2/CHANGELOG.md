@@ -1,5 +1,43 @@
 # Appraisal v2 — Changelog
 
+## P07 — Viewing → Offer → Acceptance Funnel · 10 October 2026
+
+**Files created:**
+- `src/lib/appraisal/funnel.js` — pure helpers: `calcFunnelMonth`, `calcFunnelRolling`, `sortStandingOffers`, `calcPaceIndicator`, `isFollowUpDue`
+- `src/lib/appraisal/__tests__/p07.test.js` — 17 tests: golden case (25 viewings/6 offers/1 accepted → 0.24/0.17), edge cases, standing offer sort, follow-up due flag, pace indicator
+
+**Files modified:**
+- `src/lib/appraisal/index.js` — `export * from "./funnel.js"` added
+- `src/data/repo.js` — `agentsColRef`, `agentDocRef`, `saveAgent`, `deleteAgent` added (separate Firestore subcollection so agent history survives settings reset)
+- `src/App.jsx`:
+  - Import `calcFunnelMonth`, `calcFunnelRolling`, `sortStandingOffers`, `calcPaceIndicator`, `isFollowUpDue` from funnel.js
+  - `viewings: []` + `pipelineStage: "Watching"` added to `newLead()` default
+  - `agents` state + `agentsReady` gate + `onSnapshot` subscription added
+  - `syncAgents` helper added
+  - `FunnelView` component — viewing target progress bar, this-month and rolling-3-month funnel stats, standing offers list, pace indicator
+  - `AgentsView` component — per-agent stats (viewings/offers/accepted/last-contact), 30-day stale flag, add/edit/delete agents
+  - `SourcingView` signature extended: `agents`, `setAgents`, `settings`, `onSettingsChange`
+  - View mode toggle extended from 2 tabs (List/Kanban) to 4 tabs (List/Kanban/Funnel/Agents)
+  - `LeadCard` signature extended with `agents = []`; viewing log section added (date, type, agent select, offer checkbox + amount, outcome, follow-up date, notes)
+  - `DEFAULT_SETTINGS.appraisal.viewingTargetPerMonth = 20` added
+  - SourcingView call site updated to pass `agents`, `setAgents`, `settings`, `onSettingsChange`
+
+**Tests:** 177/177 passing (+17 P07 tests)
+
+**Key design decisions:**
+- Agents live in `users/{uid}/agents/{agentId}` subcollection, separate from settings — agent history survives a settings reset
+- Viewing target default = 20/month, editable inline in FunnelView
+- Non-auction offer basis: `estResaleHigh − estRefurb − estLegalFinance` (per P07 spec decision)
+- `acceptRate = accepted / offers` — uses offers denominator, not viewings; matches spec golden case (1/6 = 17%)
+- Pace indicator is labelled "Illustrative only" — training data is too thin to rely on as a predictor
+- FunnelBar uses `round2()` internally via `calcFunnelMonth`/`calcFunnelRolling`; display shows `Math.round(rate * 100)` integer percent
+
+**Data model changes (additive — RULE 14):**
+- `lead.viewings: []` — shape per viewing: `{ id, date (YYYY-MM-DD), type ("in_person"|"virtual"), agentId, offerMade, offerAmount, outcome ("none"|"accepted"|"rejected"|"standing"|"withdrawn"), followUpDate (YYYY-MM-DD), notes }`
+- `settings.appraisal.viewingTargetPerMonth: 20` — default viewing target per month
+
+---
+
 ## P06 — Refurb Survey Benchmarks & Construction-Type Flags · 10 October 2026
 
 **Files created:**
