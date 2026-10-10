@@ -1,5 +1,51 @@
 # Appraisal v2 — Changelog
 
+## P10 — Verify & Release · 10 October 2026
+
+### What's new for you (plain English)
+
+**Deal appraisal engine** — Every deal now has a proper profit-first maths stack. Open a deal, fill in GDV, refurb, legals and finance costs, and the engine tells you your maximum purchase price + SDLT split (company buyer, England), with a clear PASS / WARN / FAIL verdict and the exact conditions that need to change to flip a fail to a pass.
+
+**Worst-case default** — All appraisals default to the worst comparable, not the best. Mid and best are shown as context. This is deliberate: if the worst-case still works, everything else is upside.
+
+**BRRR and bridging** — Separate BRRR mode (refi-first stack) calculates how much you can bid given your exit LTV and how much you're willing to leave in. The bridging panel shows day-one release after retained interest, fees, and broker costs.
+
+**Auction walk-away price** — Enter your target profit %, refurb, legals, finance, and holding costs. The engine returns a maximum bid with a room-to-manoeuvre indicator. Ticks through seven automated checks (costs complete, no placeholder assumptions, ICR, valuation headroom, equity, cash-flow, risk score).
+
+**SDLT calculator** — England company purchase rates (higher-rate 5%/7%/10%/12% + 2% surcharge). Scotland and Wales correctly return "unsupported nation" rather than silently using the wrong rates.
+
+**Refurb Survey** — Kerb-appeal checklist with grouped categories (roof, windows, doors, damp, services, cosmetic). Each item has a benchmark cost range from verified trade sources. Survey scores link to the deal's refurb budget.
+
+**Viewing → Offer → Acceptance Funnel** — Log viewings against each lead, record offer amounts, outcomes and follow-up dates. The Funnel tab summarises your monthly and 3-month rolling conversion rates (viewings → offers → accepted), standing offers sorted by closing date, and a target-pace indicator against your monthly viewing target.
+
+**Agents panel** — Track estate agents separately from leads. Each agent has a name, agency, contact, and notes field. Agents persist independently in their own Firestore subcollection so they survive a settings reset.
+
+**National Area Screener** — One-click scan of all ~360 English local authority areas ranked by a composite score (yield, price growth, sales volume, flip rate). Apply strategy filter (Flip / BRRR / BTL), property type, max price, and per-factor weights. Click any row to drill into the constituent districts with full metric breakdown.
+
+### Known limitations
+
+- **Scotland (LBTT) and Wales (LTT)** are not calculated — returns "unsupported nation". England only.
+- **Costs tagged "Illustrative — verify"** use benchmarks from trade sources as of October 2026; re-verify before relying on them.
+- **Screener data** uses ONS / Land Registry / ONS Price Paid statistics as of mid-2026 and will need refreshing periodically.
+- **P08 flag state** (lead status flags) is a placeholder pending Estately integration decision.
+
+### Pre-flight checklist (all green)
+
+| # | Check | Status |
+|---|-------|--------|
+| 1 | P09 completed — no open High/Critical in SECURITY_LOG.md | ✅ D resolved, E accepted (not exploitable in browser) |
+| 2 | `npm test` — 177/177 passing, 9 test files | ✅ |
+| 3 | Fresh production backup taken today | ✅ `backups/appData-main-2026-10-10-22:21.json` (134 KB) |
+| 4 | `npm run build` clean — no test/mock artifacts in `public/` | ✅ |
+| 5 | Production Firestore already at schemaVersion 2 | ✅ migration ran during earlier testing session |
+| 6 | Emulator smoke test | ⬜ Paul to confirm below |
+
+### Smoke test results
+
+*To be completed by Paul before merge/deploy.*
+
+---
+
 ## P09 — Security Review · 10 October 2026
 
 **Reviewer:** Claude Code security-reviewer subagent (independent pass, 45 files, P00–P08 scope)
