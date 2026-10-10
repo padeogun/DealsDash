@@ -45,6 +45,23 @@ export const CHECKLIST = [
       reg: { rental: "HHSRS entry by intruders hazard; insurers' lock standards.", resale: "—" },
       actions: [NONE, { id: "front", label: "Front door", cost: (p, g, r) => r.door_front }, { id: "both", label: "Front + rear", cost: (p, g, r) => r.door_front + r.door_rear }] },
   ]},
+  // Kerb appeal — training benchmark figures; tagged illustrative. £1 spent → £3 added check in SurveyModule.
+  { zone: "external", title: "Kerb appeal", items: [
+    { id: "kerb_paint", label: "Exterior paint", guide: "Pressure wash + masonry paint — quick uplift at low cost. Training benchmark £400–£800 depending on size (Illustrative — verify with mentor rates).",
+      reg: { rental: "—", resale: "Repainting is cosmetic; no Building Regs or planning normally required." },
+      actions: [NONE, { id: "paint", label: "Pressure wash + masonry paint", cost: (p, g, r) => r.paint_ext || 600 }] },
+    { id: "kerb_door", label: "Front door upgrade", guide: "Composite door lifts first impression and security rating. ~£200 uplift vs a standard unit at resale. Roof context: Stoke ~£5k, Liverpool £5.5–£7k, London £10k+ (Illustrative — training figures only).",
+      reg: { rental: "Security (BS PAS 24) check — insurers' lock standards.", resale: "—" },
+      brrrSpec: "Composite front door is cosmetic for resale; rental spec is a standard security door.",
+      actions: [NONE, { id: "composite", label: "Composite front door (new)", cost: (p, g, r) => r.door_front || 1250, brrrWarn: true },
+                       { id: "uplift", label: "Uplift cost (vs existing door)", cost: (p, g, r) => r.door_composite_uplift || 200, brrrWarn: true }] },
+    { id: "kerb_glazing", label: "Clean double glazing", guide: "Professional external clean — minimal cost, noticeable street appearance improvement.",
+      reg: { rental: "—", resale: "—" },
+      actions: [NONE, { id: "clean", label: "Professional external clean", cost: (p, g, r) => r.glaze_clean || 120 }] },
+    { id: "kerb_frontage", label: "Weeds / tidy frontage", guide: "Clear weeds, jet-wash path, tidy planting — minimal spend, clear first-impression gain.",
+      reg: { rental: "—", resale: "—" },
+      actions: [NONE, { id: "tidy", label: "Clear & tidy frontage", cost: (p, g, r) => r.frontage_clear || 100 }] },
+  ]},
   { zone: "external", title: "Grounds & boundaries", items: [
     { id: "boundaries", label: "Fences, walls, gates", guide: "Ownership (T-marks on title plan), collapsed panels, leaning walls.",
       reg: { rental: "—", resale: "Boundary disputes surface in TA6; check title plan." },

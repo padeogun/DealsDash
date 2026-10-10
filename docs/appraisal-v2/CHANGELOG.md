@@ -1,5 +1,160 @@
 # Appraisal v2 — Changelog
 
+## P06 — Refurb Survey Benchmarks & Construction-Type Flags · 10 October 2026
+
+**Files created:**
+- `src/lib/appraisal/construction.js` — `NON_STANDARD_KEYWORDS` array + `isLikelyNonStandard(wallsDescription)` pure helper
+- `src/lib/appraisal/__tests__/p06.test.js` — 16 tests: 6 standard EPC strings → false, 4 non-standard strings → true, 6 edge cases (null, undefined, empty, case-insensitive, cavity not flagged, keyword array non-empty)
+
+**Files modified:**
+- `src/lib/appraisal/index.js` — `export * from "./construction.js"` added
+- `src/modules/survey/data/rates.js` — 4 kerb-appeal rates added: `paint_ext` (£600), `door_composite_uplift` (£200), `glaze_clean` (£120), `frontage_clear` (£100)
+- `src/modules/survey/data/checklist.js` — "Kerb appeal" group added to external zone (before "Grounds & boundaries"): 4 items (exterior paint, front door upgrade with `brrrWarn`, glazing clean, frontage tidy)
+- `src/modules/survey/SurveyModule.jsx` — BRRR spec toggle on strategy tab (renders only when `strategy === "brrr"`); uplift ratio field + £1→£3 note on each walkthrough action; `brrrWarn` caution note
+- `functions/index.js` — `checkEpcRegister` `.map()` extended to return `wallsDescription`, `builtForm`, `constructionAgeBand`, `propertyType` (handles both kebab-case API JSON and camelCase SDK variants)
+- `src/App.jsx` — import `isLikelyNonStandard`; `construction: null` added to `newLead()`; `AreaIntelligencePanel` signature extended with `construction` / `onConstructionChange` props; construction signals section added to EPC results (non-standard banner + per-property walls description list); manual construction confirmation fields (type dropdown, frontage, notes); street notes section (construction mix, frontage mix, good/avoid end, other notes); non-standard confirmed warning banner; "Non-std construction" badge in lead card header
+- `src/components/AppraisalV2Tab.jsx` — comparables rows extended with `construction` and `frontage` text fields; `addComp()` default object updated
+
+**Tests:** 160/160 passing (+16 P06 tests)
+
+**Key design decisions:**
+- EPC construction detection is advisory only — `isLikelyNonStandard` suggests, user confirms manually via dropdown
+- Both kebab-case (`walls-description`) and camelCase (`wallsDescription`) handled in Cloud Function, since MHCLG API behaviour varies across SDK versions
+- `brrrWarn` flag marks cosmetic items (composite door, exterior paint) that tenants won't pay for — only surfaced when `survey.strategy === "brrr"` AND `survey.brrrSpec === true`
+- Value-add uplift ratio < 3.0 shows caution note "Below £1→£3 rule of thumb — Illustrative"; ≥ 3.0 shows positive note
+- `construction: null` is additive (RULE 14); existing leads return `undefined` from Firestore, treated as null throughout
+- Non-standard badge in lead card header means the flag persists across all tabs, not just the Risk tab
+
+**Data model changes (additive — RULE 14):**
+- `lead.construction: null` added to `newLead()` default — shape: `{ confirmedType, frontage, notes, streetConstructionMix, streetFrontageMix, streetGoodAvoidEnd, streetNotes }`
+- `epcCheck.properties[n].wallsDescription`, `.builtForm`, `.constructionAgeBand`, `.propertyType` — new fields on EPC results (existing cached results missing these fields degrade gracefully to null)
+- `valuation.comparables[n].construction`, `.frontage` — new optional fields on appraisal comparables
+
+---
+
+## P05 — Auction Assessment v2 · 10 October 2026
+
+**Branch:** feature/appraisal-v2
+
+**Files created:**
+- `src/lib/appraisal/auction.js` — pure helpers: `mapLegalPackCostLines`, `auctionFlipWalkAway` (extracted so they can be unit-tested without jsdom)
+- `src/components/AuctionAssessmentV2.jsx` — ~380-line React component for pre-bid auction assessment
+- `src/lib/appraisal/__tests__/p05.test.js` — 10 tests: Daniel flip golden case (3), buyer's premium impact (2), legal pack fixture (5)
+
+**Files modified:**
+- `src/App.jsx` — import `AuctionAssessmentV2`; `auctionV2: null` added to `newLead()`; wired into `LeadCard` after `<TriageBlock>` for auction leads
+- `src/lib/appraisal/index.js` — added `export * from "./auction.js"`
+
+**Tests:** 144/144 passing (+10 P05 tests)
+
+**Component sections:**
+1. Verdict bar — PASS/WARN/FAIL with colour border; "(overridden)" tag when FAIL is bypassed
+2. Valuation — worst/mid/best number fields, basis toggle; pre-filled from `lead.estResaleLow`/`lead.estResaleHigh`; override stored in `lead.auctionV2.valuation`
+3. Cost lines — derived from lead fields (refurb, buyer's premium, seller fees, legal/finance) + most recent legal pack review fees; null amounts shown as "Unknown" badge (RULE 7)
+4. Maximum offer — max bid price, SDLT, break-even sale, target sale; editable profit target %; SDLT illustrative label
+5. Walk-away tests — 5 tests: value, costs, profit margin, resilience (−10%), AIP
+6. AIP checkbox — stored in `lead.auctionV2.aipRecorded`
+7. FAIL override — text reason required; stored in `lead.auctionV2.overrideReason`; shows "Remove override" link when set
+8. "Ready to bid" bar — hidden on FAIL unless overridden; triggers bid sheet
+9. Bid sheet (collapsible + printable) — max bid, SDLT, break-even sale, worst-case value, total costs, target sale, AIP status, top 3 risks, auction house/lot/completion details, SDLT disclaimer, Print/PDF button
+
+**Data model changes (additive — RULE 14):**
+- `lead.auctionV2: null` added to `newLead()` default
+- At runtime: `lead.auctionV2 = { valuation:{worst,mid,best,basis,comparables}, profitPct, aipRecorded, overrideReason }`
+- All cost lines computed on the fly from existing lead fields — not stored (no new Firestore fields for costs)
+
+**Key design decisions:**
+- Cost lines are derived (not stored): lead fields + legal pack review fees = ephemeral computation in `useMemo`
+- Auction flip uses a separate `auctionFlipWalkAway()` (5 tests) — not the BRRR-oriented `walkAway()` from P01 (which tests refinance, ICR, cash flow)
+- `mapLegalPackCostLines` and `auctionFlipWalkAway` extracted to `src/lib/appraisal/auction.js` (pure JS, no React) for testability — imported by both the component and the test file
+- Override mechanism requires a written reason — stored on the lead so it appears in any audit
+
+**Golden cases confirmed in tests:**
+- Daniel scenario: worst £120k, refurb £18k, legals £7,600, 15% profit → `flipBudget = 76,400` ✓
+- splitBudget(76,400, company, ENG) → price + SDLT = £76,400 ✓
+- auctionFlipWalkAway with 3 comps, no null lines, AIP recorded → verdict "pass" ✓
+- £1,500 buyer's premium reduces flipBudget by exactly £1,500 ✓
+- Legal pack: 3 otherFees (£500, £150, null label) → 3 lines, 2 with amounts, 1 null → sumCosts incomplete ✓
+
+**Gate:** P05 complete. Run one real auction lead end-to-end on the emulator to confirm the bid sheet renders. Await Paul's sign-off before proceeding to P06 (or next agreed phase).
+
+---
+
+## P04 — Funding Sources, Bridging Calculator and Capital Recycling · 10 October 2026
+
+**Branch:** feature/appraisal-v2
+
+**Files created:**
+- `src/lib/appraisal/__tests__/p04.test.js` — 14 tests: bridging golden case, finance→engine integration, recycling overrun fixture, capital cost
+
+**Files modified:**
+- `src/lib/migrations/v2.js` — `emptyV2Block()` adds capital allocation fields (`capitalAllocated`, `capitalDeployedAt`, `capitalExpectedReturnAt`, `capitalReturnedAt`, `useComputedFinance`); `FundingSource` typedef extended with broker/valuation/lenderLegal/admin/extensionRate fields
+- `src/components/AppraisalV2Tab.jsx` — bridging calculator panel + finance cost toggle + capital allocation section
+- `src/App.jsx` — `PrivateCapitalTracker` component added to `BusinessPlannerView`; imports `recycling`, `capitalCost`
+
+**Tests:** 134/134 passing (+14 P04 tests)
+
+**New sections in AppraisalV2Tab:**
+1. **Funding & bridging panel** — bridge source form (LTV%, rate, term, interest mode, arrangement/exit %, fee fields); toggle "use computed finance cost in engine" (reduces max offer by bridge total cost at term); bridging calculator outputs: gross loan, day-one release, finance cost at term, extension cost/month; shortfall warning when day-one release < purchase price + SDLT; redemption table at months 6/9/12/15; Daniel/classroom golden-case note
+2. **Private capital allocation** — per-deal fields: allocated £, deployed date, expected return, actual return; computed interest cost; overrun/overdue warning flags
+
+**PrivateCapitalTracker (BusinessPlannerView):**
+- Uses `recycling()` from `capital.js` across all deals with `v2.capitalAllocated > 0`
+- KPIs: pool size, deployed, idle, turns/year; overrun alert banner
+- Cumulative accrued interest (active allocations)
+- Allocations table: deal name, allocated, deployed date, expected return, interest cost, status (active/overdue/overrun/returned)
+- Pool size and rate editable inline (existing settings fields)
+
+**Golden case confirmed in tests:**
+- £75k gross, 1%/month retained ×12, 1%/1% at start, broker £500, valuation £650 → day-one release **£63,350** ✓
+
+**Key design decisions:**
+- Bridge gross = `deal.price × ltvPct` (actual purchase price, not max offer — avoids circularity)
+- Finance cost is opt-in (`useComputedFinance` toggle); off by default so existing max-offer figures are unchanged until Paul enables it
+- Capital allocations stored on `deal.v2` (additive — RULE 14); no new Firestore collection needed
+
+**Gate:** P04 complete. Awaiting Paul's sign-off before proceeding to P05 (Auction Walk-Away).
+
+---
+
+## P03 — Appraisal v2 UI · 10 October 2026
+
+**Branch:** feature/appraisal-v2
+
+**Files created:**
+- `src/components/AppraisalV2Tab.jsx` — ~500-line React component wiring the P01 engine into the deal detail view
+
+**Files modified:**
+- `src/App.jsx` — added `import AppraisalV2Tab`, added `"Appraisal v2"` to `DEAL_TABS`, added render block after Decision Brief tab
+- `docs/appraisal-v2/CHANGELOG.md` — this entry
+
+**Tests:** 120/120 passing (no new tests — UI tests require jsdom setup, noted as P03 follow-up)
+
+**Component sections:**
+1. Verdict bar — PASS/WARN/FAIL with colour border, lists failing walk-away test IDs
+2. Max offer — Flip/BRRR strategy toggle; price, SDLT, budget, total project cost KPIs; SDLT `effectiveFrom` + `verifyAt` notice
+3. Valuation — worst/mid/best number fields with segmented basis control; comparables table (add/remove)
+4. Cost lines — label, amount (null renders "Unknown" badge — RULE 7), basis select, source, remove
+5. Refinance — LTV, refi fees, accepted left in, lender route
+6. Rental income — monthly rent, IO mortgage, net cash flow KPIs, ICR result
+7. Four measures (RULE 10) — cash released, cash left in, equity, net monthly — always separate
+8. Fragility — BRRR: break-even val + headroom + refi surplus; Flip: break-even sale + target sale
+9. Stress tests — BRRR only, sorted worst-first, collapsed to 3, expand button
+10. Walk-away tests — 5 tests with colour-coded borders
+11. v1 comparison — shown when `settings.appraisal.showV1Comparison !== false`
+12. Per-deal overrides — collapsible panel for profit%, ICR, min monthly, min headroom, left in, LTV
+
+**Key implementation notes:**
+- All cost lines passed as `refurb` to `flipBudget`/`brrrBudget` (P04 will add proper bridge cost modelling)
+- Per-deal overrides fall back to global `settings.appraisal` thresholds
+- `deal.v2 || {}` guard: component renders safely on pre-migration deals
+- SDLT always computed as company buyer, England — `effectiveFrom: 2025-10-31` label shown with Illustrative tag
+- Stress tests (BRRR only): 7 scenarios from `runStress`, sorted by `cfResult` ascending
+
+**Gate:** P03 complete. Awaiting Paul's sign-off before proceeding to P04 (Funding & Capital phase).
+
+---
+
 ## P02 — Data Model Migration · 10 October 2026
 
 **Branch:** feature/appraisal-v2

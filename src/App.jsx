@@ -37,6 +37,10 @@ import { emptyV2Block } from "./lib/migrations/v2.js";
 import WorkspaceView from "./components/WorkspaceView.jsx";
 import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
+import AppraisalV2Tab from "./components/AppraisalV2Tab.jsx";
+import AuctionAssessmentV2 from "./components/AuctionAssessmentV2.jsx";
+import { recycling, capitalCost } from "./lib/appraisal/capital.js";
+import { isLikelyNonStandard } from "./lib/appraisal/construction.js";
 
 /* =================================================================================
    FIREBASE — Google Sign-In gated to one account, Firestore for cross-device sync
@@ -1395,7 +1399,7 @@ function FundingPlannerView({ deal, onChange, settings, defaultBuyBox }) {
   );
 }
 
-const DEAL_TABS = ["Property & comps", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief"];
+const DEAL_TABS = ["Property & comps", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief", "Appraisal v2"];
 
 function _DealHeadlineStrip({ deal, base, verdict, defaultBuyBox }) {
   const isBrrr = deal.fundingMode === "mortgage";
@@ -2020,7 +2024,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
 
       {subTab === "Risk" && (
         <>
-          <AreaIntelligencePanel postcode={deal.postcode} cached={deal.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={deal.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={deal.propertyType} />
+          <AreaIntelligencePanel postcode={deal.postcode} cached={deal.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={deal.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={deal.propertyType} construction={deal.construction} onConstructionChange={(r) => onChange({ construction: r })} />
           <Card className="space-y-3">
             <SectionTitle>Area risk scoring</SectionTitle>
             <div className="space-y-2">
@@ -2119,6 +2123,10 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
 
       {subTab === "Decision Brief" && (
         <DecisionBriefView deal={deal} defaultBuyBox={defaultBuyBox} ownerUid={ownerUid} />
+      )}
+
+      {subTab === "Appraisal v2" && (
+        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} v1Appraisal={base} />
       )}
 
       <Card>
@@ -2959,7 +2967,133 @@ function BusinessPlannerView({ settings, setSettings, deals, ledger }) {
         <BusinessSimChart timeline={result.timeline} target={p.targetMonthlyIncome} />
         <p className="text-xs text-vx-muted mt-2">Trailing 12-month profit ÷ 12, recomputed each month as deals complete and capital recycles into new projects, capped at your concurrency limit.</p>
       </Card>
+
+      {/* ── Private capital pool tracker (P04) ─────────────────────────── */}
+      <PrivateCapitalTracker deals={deals} settings={settings} setSettings={setSettings} />
     </div>
+  );
+}
+
+/** P04 — private capital pool recycling tracker. Shows deployed/idle per deal, turns, overruns. */
+function PrivateCapitalTracker({ deals, settings, setSettings }) {
+  const poolCfg = useMemo(() => ({
+    pool:                  Number(settings?.lenderFundSize)         || 50000,
+    ratePct:               Number(settings?.lenderFundRatePct)      || 0.08,
+    termMonths:            Number(settings?.capitalTermMonths)       || 12,
+    extensionCapMonths:    Number(settings?.capitalExtensionMonths)  || 3,
+  }), [settings]);
+
+  // Build allocation list from deals with v2.capitalAllocated set
+  const allocations = useMemo(() =>
+    (deals || [])
+      .filter(d => d.v2?.capitalAllocated > 0)
+      .map(d => ({
+        id:           d.id,
+        dealName:     d.name || d.address || d.id,
+        allocated:    Number(d.v2.capitalAllocated),
+        deployedAt:   d.v2.capitalDeployedAt   || null,
+        expectedReturn: d.v2.capitalExpectedReturnAt || null,
+        returnedAt:   d.v2.capitalReturnedAt   || null,
+      })),
+  [deals]);
+
+  const recycleResult = useMemo(() =>
+    recycling(poolCfg.pool, allocations.map(a => ({
+      id: a.id, allocated: a.allocated,
+      deployedAt: a.deployedAt, returnedAt: a.returnedAt,
+    })), { termMonths: poolCfg.termMonths, extensionMonths: poolCfg.extensionCapMonths }),
+  [poolCfg, allocations]);
+
+  // Cumulative interest across active allocations (deployed, not yet returned)
+  const accruedInterest = useMemo(() => {
+    const now = Date.now();
+    return allocations
+      .filter(a => a.deployedAt && !a.returnedAt)
+      .reduce((sum, a) => {
+        const ms = now - new Date(a.deployedAt).getTime();
+        const months = ms / (1000 * 60 * 60 * 24 * 30.4375);
+        return sum + capitalCost(a.allocated, months, poolCfg.ratePct).cost;
+      }, 0);
+  }, [allocations, poolCfg.ratePct]);
+
+  return (
+    <Card>
+      <SectionTitle>Private capital pool</SectionTitle>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <KPI label="Pool size" value={fmtGBP(poolCfg.pool)} />
+        <KPI label="Deployed" value={fmtGBP(recycleResult.deployed)}
+          tone={recycleResult.deployed > 0 ? "default" : "default"} />
+        <KPI label="Idle" value={fmtGBP(recycleResult.idle)}
+          tone={recycleResult.idle >= 0 ? "good" : "bad"} />
+        <KPI label="Turns / year" value={recycleResult.turnsPerYear > 0 ? recycleResult.turnsPerYear.toFixed(1) + "×" : "—"}
+          tone={recycleResult.turnsPerYear >= 2 ? "good" : "default"} />
+      </div>
+
+      {recycleResult.overrunCount > 0 && (
+        <div className="mb-3 flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">
+          ⚠ {recycleResult.overrunCount} allocation{recycleResult.overrunCount !== 1 ? "s" : ""} overrun the {poolCfg.termMonths + poolCfg.extensionCapMonths}-month limit.
+        </div>
+      )}
+
+      {accruedInterest > 0 && (
+        <p className="text-xs text-vx-muted mb-3">
+          Cumulative interest accrued on active allocations: <strong className="font-mono">{fmtGBP(round2(accruedInterest))}</strong>
+          {" "}at {(poolCfg.ratePct * 100).toFixed(1)}% p.a. simple. <span className="italic">Illustrative — verify with fund manager.</span>
+        </p>
+      )}
+
+      {allocations.length === 0 ? (
+        <p className="text-xs text-vx-muted">No capital allocated to deals yet. Add allocations via the &ldquo;Appraisal v2&rdquo; tab on each deal.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-vx-muted border-b border-vx-divider">
+                <th className="text-left py-1 pr-3 font-medium">Deal</th>
+                <th className="text-right py-1 pr-3 font-medium">Allocated</th>
+                <th className="text-right py-1 pr-3 font-medium">Deployed</th>
+                <th className="text-right py-1 pr-3 font-medium">Expected return</th>
+                <th className="text-right py-1 pr-3 font-medium">Interest cost</th>
+                <th className="text-right py-1 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allocations.map(a => {
+                const now = Date.now();
+                const deployedMs = a.deployedAt ? now - new Date(a.deployedAt).getTime() : 0;
+                const monthsHeld = deployedMs / (1000 * 60 * 60 * 24 * 30.4375);
+                const interest = a.deployedAt
+                  ? capitalCost(a.allocated, monthsHeld, poolCfg.ratePct).cost
+                  : 0;
+                const isOverrun = !a.returnedAt && monthsHeld > poolCfg.termMonths + poolCfg.extensionCapMonths;
+                const isExpired = !a.returnedAt && a.expectedReturn && new Date(a.expectedReturn) < new Date();
+                const status    = a.returnedAt ? "returned" : isOverrun ? "overrun" : isExpired ? "overdue" : "active";
+                const statusColour = { returned: "text-vx-positive", overrun: "text-vx-negative", overdue: "text-vx-caution", active: "text-vx-muted" }[status];
+                return (
+                  <tr key={a.id} className="border-b border-vx-divider last:border-0">
+                    <td className="py-1.5 pr-3 font-medium text-vx-text truncate max-w-[160px]">{a.dealName}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono tabular-nums">{fmtGBP(a.allocated)}</td>
+                    <td className="py-1.5 pr-3 text-right">{a.deployedAt || "—"}</td>
+                    <td className="py-1.5 pr-3 text-right">{a.expectedReturn || "—"}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono tabular-nums">{fmtGBP(round2(interest))}</td>
+                    <td className={`py-1.5 text-right font-medium capitalize ${statusColour}`}>{status}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <NumField label="Pool size (£)" value={settings.lenderFundSize ?? 50000}
+          onChange={(v) => setSettings({ ...settings, lenderFundSize: v })} testId="lender-fund-size" />
+        <PctField label="Annual rate %" value={settings.lenderFundRatePct ?? 0.08}
+          onChange={(v) => setSettings({ ...settings, lenderFundRatePct: v })} step={0.5} testId="lender-fund-rate" />
+      </div>
+      <p className="text-xs text-vx-muted mt-2 italic">Projection — illustrative, depends on deal exits.</p>
+    </Card>
   );
 }
 
@@ -3356,7 +3490,9 @@ function newLead() {
     triage: newTriage(),
     areaIntelligence: null,
     epcCheck: null,
+    construction: null, // P06: { confirmedType, frontage, notes, streetConstructionMix, streetFrontageMix, streetGoodAvoidEnd, streetNotes }
     pipelineStage: "Watching",
+    auctionV2: null,
   };
 }
 
@@ -3693,7 +3829,7 @@ function _AreaIntelMomentumSection({ postcode, cached, marketStats, propertyType
   );
 }
 
-function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcChange, marketStats, propertyType }) {
+function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcChange, marketStats, propertyType, construction, onConstructionChange }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [epcLoading, setEpcLoading] = useState(false);
@@ -3817,9 +3953,111 @@ function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcCha
               </ul>
             )}
             <div className="text-vx-muted mt-1">Checked {new Date(epcCached.checkedAt).toLocaleString("en-GB")} for {epcCached.postcode} — most recent certificate per property shown{epcCached.totalCertificatesFound > epcCached.properties.length ? ` (${epcCached.totalCertificatesFound} total certificates on record, including history)` : ""}.</div>
+            {/* Construction signals from EPC — P06 */}
+            {(() => {
+              const withWalls = epcCached.properties.filter((p) => p.wallsDescription);
+              const nonStd = withWalls.filter((p) => isLikelyNonStandard(p.wallsDescription));
+              if (withWalls.length === 0) return null;
+              return (
+                <div className="mt-2 pt-2 border-t border-vx-divider">
+                  <div className="font-medium text-vx-text text-xs mb-1">Construction signals (from EPC)</div>
+                  {nonStd.length > 0 && (
+                    <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-1.5">
+                      <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
+                      <span>Non-standard construction detected on {nonStd.length} EPC certificate{nonStd.length !== 1 ? "s" : ""} — confirm on viewing. <span className="font-medium">Illustrative — verify in person.</span></span>
+                    </div>
+                  )}
+                  <ul className="space-y-0.5">
+                    {withWalls.slice(0, 6).map((p, i) => (
+                      <li key={i} className="text-xs text-vx-muted flex items-center gap-1.5 flex-wrap">
+                        {isLikelyNonStandard(p.wallsDescription) && <Badge tone="warn">Non-std</Badge>}
+                        <span className="text-vx-text">{p.address}:</span>
+                        <span>{p.wallsDescription}</span>
+                        {p.constructionAgeBand && <span>· {p.constructionAgeBand}</span>}
+                        {p.builtForm && <span>· {p.builtForm}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
+
+      {/* Manual construction confirmation — P06 */}
+      {onConstructionChange && (
+        <div className="pt-2 border-t border-vx-divider">
+          <div className="font-medium text-vx-text text-xs mb-1">Construction — manual confirmation</div>
+          <p className="text-xs text-vx-muted mb-2">Confirm after viewing. Lenders and insurers treat non-standard construction differently — affects mortgage availability and refurb scope.</p>
+          <div className="grid md:grid-cols-2 gap-2 mb-2">
+            <div>
+              <label className="block text-xs text-vx-muted mb-0.5">Construction type confirmed</label>
+              <select
+                value={(construction || {}).confirmedType || ""}
+                onChange={(e) => onConstructionChange({ ...(construction || {}), confirmedType: e.target.value })}
+                className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+              >
+                <option value="">Not assessed</option>
+                <option value="standard">Standard (brick / stone)</option>
+                <option value="non-standard">Non-standard</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-vx-muted mb-0.5">Frontage description</label>
+              <input
+                type="text"
+                placeholder="e.g. Pebbledash, painted brick, render…"
+                value={(construction || {}).frontage || ""}
+                onChange={(e) => onConstructionChange({ ...(construction || {}), frontage: e.target.value })}
+                className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+              />
+            </div>
+          </div>
+          {(construction || {}).confirmedType === "non-standard" && (
+            <div className="flex items-start gap-1.5 text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded px-2 py-1.5 mb-2">
+              <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
+              <span><span className="font-semibold">Non-standard confirmed.</span> Check mortgage lender criteria, specialist insurer, and whether refurb scope changes. Flag to solicitor.</span>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs text-vx-muted mb-0.5">Notes</label>
+            <textarea
+              rows={2}
+              placeholder="Any additional observations…"
+              value={(construction || {}).notes || ""}
+              onChange={(e) => onConstructionChange({ ...(construction || {}), notes: e.target.value })}
+              className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Street notes — P06 */}
+      {onConstructionChange && (
+        <div className="pt-2 border-t border-vx-divider">
+          <div className="font-medium text-vx-text text-xs mb-1">Street notes</div>
+          <p className="text-xs text-vx-muted mb-1.5">Light observations for the street / postcode sector — useful for future deals in the same area.</p>
+          <div className="space-y-1.5">
+            {[
+              ["streetConstructionMix", "Construction mix on street"],
+              ["streetFrontageMix", "Frontage mix"],
+              ["streetGoodAvoidEnd", "Good / avoid which end?"],
+              ["streetNotes", "Other street notes"],
+            ].map(([field, label]) => (
+              <div key={field}>
+                <label className="block text-xs text-vx-muted mb-0.5">{label}</label>
+                <input
+                  type="text"
+                  value={(construction || {})[field] || ""}
+                  onChange={(e) => onConstructionChange({ ...(construction || {}), [field]: e.target.value })}
+                  className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -4679,6 +4917,7 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
             {stale && lead.status !== "promoted" && lead.status !== "rejected" && <Badge tone="warn">stale</Badge>}
             {listingStatusTone && lead.statusCheck.status !== "still_live" && <Badge tone={listingStatusTone}>{lead.statusCheck.status.replace(/_/g, " ")}</Badge>}
             {lead.areaIntelligence && lead.areaIntelligence.imd && <ImdPill imd={lead.areaIntelligence.imd} />}
+            {lead.construction && lead.construction.confirmedType === "non-standard" && <Badge tone="bad">Non-std construction</Badge>}
           </div>
           <div className="text-xs text-vx-muted mt-1 flex items-center gap-1"><MapPin size={12} />{lead.postcode || "No postcode"} · {lead.propertyType} · {lead.source || "No source"}</div>
           <div className="flex gap-5 mt-2 text-sm font-mono tabular-nums">
@@ -4735,6 +4974,10 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
 
           <TriageBlock lead={lead} onChange={onChange} />
 
+          {lead.listingType === "auction" && (
+            <AuctionAssessmentV2 lead={lead} onChange={onChange} />
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-vx-muted">Listing status</span>
@@ -4753,7 +4996,7 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
             )}
           </div>
 
-          <AreaIntelligencePanel postcode={lead.postcode} cached={lead.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={lead.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={lead.propertyType} />
+          <AreaIntelligencePanel postcode={lead.postcode} cached={lead.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={lead.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={lead.propertyType} construction={lead.construction} onConstructionChange={(r) => onChange({ construction: r })} />
 
           <div>
             <div className="flex items-center justify-between mb-2">

@@ -55,6 +55,11 @@ export const RATE_DEFAULTS = [
   ["knotweed", "Japanese knotweed treatment plan", 3600, "each"],
   ["tree", "Tree removal", 620, "each"],
   ["cellar", "Cellar damp works / tanking", 4600, "each"],
+  // Kerb appeal — Illustrative training figures; replace with mentor rates.
+  ["paint_ext", "Exterior paint (pressure wash + masonry)", 600, "each"],
+  ["door_composite_uplift", "Front door upgrade uplift (composite vs standard)", 200, "each"],
+  ["glaze_clean", "Professional external window clean", 120, "each"],
+  ["frontage_clear", "Weed clear + tidy frontage", 100, "each"],
   ["skip", "Skip (8 yd)", 340, "each"],
   ["epc", "EPC assessment", 85, "each"],
   ["legionella", "Legionella risk assessment", 120, "each"],
