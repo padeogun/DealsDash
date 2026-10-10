@@ -984,11 +984,6 @@ exports.checkEpcRegister = onCall({ secrets: [EPC_API_KEY], cors: true, timeoutS
       band: c.currentEnergyEfficiencyBand || "Unknown",
       registrationDate: c.registrationDate || "",
       certificateNumber: c.certificateNumber || "",
-      // P06 construction fields — handle both kebab-case (API JSON) and camelCase (SDK variants)
-      wallsDescription: c["walls-description"] || c.wallsDescription || null,
-      builtForm: c["built-form"] || c.builtForm || null,
-      constructionAgeBand: c["construction-age-band"] || c.constructionAgeBand || null,
-      propertyType: c["property-type"] || c.propertyType || null,
     }));
 
   return {

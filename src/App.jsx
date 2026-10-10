@@ -40,7 +40,6 @@ import UserGuideView from "./components/UserGuideView.jsx";
 import AppraisalV2Tab from "./components/AppraisalV2Tab.jsx";
 import AuctionAssessmentV2 from "./components/AuctionAssessmentV2.jsx";
 import { recycling, capitalCost } from "./lib/appraisal/capital.js";
-import { isLikelyNonStandard } from "./lib/appraisal/construction.js";
 
 /* =================================================================================
    FIREBASE — Google Sign-In gated to one account, Firestore for cross-device sync
@@ -3953,34 +3952,8 @@ function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcCha
               </ul>
             )}
             <div className="text-vx-muted mt-1">Checked {new Date(epcCached.checkedAt).toLocaleString("en-GB")} for {epcCached.postcode} — most recent certificate per property shown{epcCached.totalCertificatesFound > epcCached.properties.length ? ` (${epcCached.totalCertificatesFound} total certificates on record, including history)` : ""}.</div>
-            {/* Construction signals from EPC — P06 */}
-            {(() => {
-              const withWalls = epcCached.properties.filter((p) => p.wallsDescription);
-              const nonStd = withWalls.filter((p) => isLikelyNonStandard(p.wallsDescription));
-              if (withWalls.length === 0) return null;
-              return (
-                <div className="mt-2 pt-2 border-t border-vx-divider">
-                  <div className="font-medium text-vx-text text-xs mb-1">Construction signals (from EPC)</div>
-                  {nonStd.length > 0 && (
-                    <div className="flex items-start gap-1.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-1.5">
-                      <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
-                      <span>Non-standard construction detected on {nonStd.length} EPC certificate{nonStd.length !== 1 ? "s" : ""} — confirm on viewing. <span className="font-medium">Illustrative — verify in person.</span></span>
-                    </div>
-                  )}
-                  <ul className="space-y-0.5">
-                    {withWalls.slice(0, 6).map((p, i) => (
-                      <li key={i} className="text-xs text-vx-muted flex items-center gap-1.5 flex-wrap">
-                        {isLikelyNonStandard(p.wallsDescription) && <Badge tone="warn">Non-std</Badge>}
-                        <span className="text-vx-text">{p.address}:</span>
-                        <span>{p.wallsDescription}</span>
-                        {p.constructionAgeBand && <span>· {p.constructionAgeBand}</span>}
-                        {p.builtForm && <span>· {p.builtForm}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })()}
+            {/* EPC search returns band + date only — walls/construction data requires the individual certificate endpoint */}
+            <p className="text-xs text-vx-muted mt-1.5">Construction type is not available in the EPC postcode search. Confirm in person using the section below.</p>
           </div>
         )}
       </div>
