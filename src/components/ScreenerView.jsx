@@ -462,53 +462,91 @@ export default function ScreenerView({ settings, onSettingsChange, onAddTargetAr
               const isSelected = selected.has(area.code);
               const isDrilled = drillCode === area.code;
               return (
-                <tr
-                  key={area.code}
-                  style={{
-                    background: isSelected ? "color-mix(in srgb, var(--vx-accent) 8%, transparent)" : undefined,
-                    outline: isDrilled ? "2px solid var(--vx-accent)" : undefined,
-                    outlineOffset: -2,
-                  }}
-                >
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelect(area.code)}
-                      aria-label={`Select ${area.name}`}
-                    />
-                  </td>
-                  <td className="n" style={{ color: "var(--vx-text-muted)", fontSize: 12 }}>{rank ?? "—"}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => setDrillCode(isDrilled ? null : area.code)}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 500, color: "var(--vx-accent)", padding: 0, fontSize: "inherit", textAlign: "left" }}
-                    >
-                      {area.name}
-                    </button>
-                  </td>
-                  <td style={{ fontSize: 12, color: "var(--vx-text-muted)" }}>{NATION_LABELS[nationKey] || nationKey}</td>
-                  <td className="n" style={{ fontWeight: 600 }}>
-                    {niNoBrrr
-                      ? <span title="NI: no BRRR score (no PIPR rents)" style={{ color: "var(--vx-text-muted)", fontSize: 12 }}>No BRRR†</span>
-                      : (score ?? "—")}
-                  </td>
-                  <td className="n">{vals.price != null ? formatGBP(vals.price) : "—"}</td>
-                  <td className="n">{fmtYield(vals.yield)}</td>
-                  <td className="n" style={{ color: vals.growth12 != null ? (vals.growth12 >= 0 ? "var(--vx-success)" : "var(--vx-danger)") : undefined }}>
-                    {fmtGrowth(vals.growth12)}
-                  </td>
-                  <td className="n">{fmtInt(vals.liquidity)}</td>
-                  <td className="n">{fmtRate(vals.flipEvidence)}</td>
-                  <td>
-                    {partial && (
-                      <span style={{ background: "var(--vx-warn, #f59e0b)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>
-                        partial
-                      </span>
-                    )}
-                  </td>
-                </tr>
+                <React.Fragment key={area.code}>
+                  <tr
+                    style={{
+                      background: isSelected ? "color-mix(in srgb, var(--vx-accent) 8%, transparent)" : undefined,
+                      borderBottom: isDrilled ? "none" : undefined,
+                    }}
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(area.code)}
+                        aria-label={`Select ${area.name}`}
+                      />
+                    </td>
+                    <td className="n" style={{ color: "var(--vx-text-muted)", fontSize: 12 }}>{rank ?? "—"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => setDrillCode(isDrilled ? null : area.code)}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 500, color: "var(--vx-accent)", padding: 0, fontSize: "inherit", textAlign: "left" }}
+                      >
+                        {area.name}
+                      </button>
+                    </td>
+                    <td style={{ fontSize: 12, color: "var(--vx-text-muted)" }}>{NATION_LABELS[nationKey] || nationKey}</td>
+                    <td className="n" style={{ fontWeight: 600 }}>
+                      {niNoBrrr
+                        ? <span title="NI: no BRRR score (no PIPR rents)" style={{ color: "var(--vx-text-muted)", fontSize: 12 }}>No BRRR†</span>
+                        : (score ?? "—")}
+                    </td>
+                    <td className="n">{vals.price != null ? formatGBP(vals.price) : "—"}</td>
+                    <td className="n">{fmtYield(vals.yield)}</td>
+                    <td className="n" style={{ color: vals.growth12 != null ? (vals.growth12 >= 0 ? "var(--vx-success)" : "var(--vx-danger)") : undefined }}>
+                      {fmtGrowth(vals.growth12)}
+                    </td>
+                    <td className="n">{fmtInt(vals.liquidity)}</td>
+                    <td className="n">{fmtRate(vals.flipEvidence)}</td>
+                    <td>
+                      {partial && (
+                        <span style={{ background: "var(--vx-warn, #f59e0b)", color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>
+                          partial
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                  {isDrilled && (
+                    <tr>
+                      <td colSpan={11} style={{ padding: 0, background: "var(--vx-surface)" }}>
+                        <div style={{ padding: "12px 16px 16px", borderBottom: "2px solid var(--vx-accent)" }}>
+                          <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>{area.name} — district breakdown</div>
+                          {nationKey === "S" && <Note tone="info">Scotland: district-level Price Paid data is not included in this build. Drill-down is available for England and Wales only.</Note>}
+                          {nationKey === "N" && <Note tone="info">Northern Ireland: Land Registry Price Paid data does not cover NI. Drill-down is available for England and Wales only.</Note>}
+                          {["E", "W"].includes(nationKey) && drillDistricts.length === 0 && <Note tone="warn">No district data found for this council in the current build.</Note>}
+                          {["E", "W"].includes(nationKey) && drillDistricts.length > 0 && (
+                            <Table
+                              head={[
+                                "Outcode",
+                                "Type",
+                                { label: "Median price", numeric: true },
+                                { label: "Sales", numeric: true },
+                                { label: "Flips", numeric: true },
+                                { label: "Median uplift", numeric: true },
+                                { label: "Median gain", numeric: true },
+                              ]}
+                              rows={drillDistricts.map(d => ({
+                                cells: [
+                                  d.outcode,
+                                  d.ptype === "T" ? "Terraced" : d.ptype === "S" ? "Semi" : d.ptype,
+                                  d.median_price != null ? formatGBP(d.median_price) : "—",
+                                  fmtInt(d.sales),
+                                  fmtInt(d.flips),
+                                  d.flip_uplift_pct != null ? "+" + (d.flip_uplift_pct * 100).toFixed(1) + "%" : "—",
+                                  d.flip_gain_gbp != null ? formatGBP(d.flip_gain_gbp) : "—",
+                                ],
+                                numeric: [false, false, true, true, true, true, true],
+                              }))}
+                              zebra
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
           </tbody>
@@ -523,64 +561,6 @@ export default function ScreenerView({ settings, onSettingsChange, onAddTargetAr
         </Note>
       )}
 
-      {/* Drill-down panel */}
-      {drillCode && drillArea && (
-        <div style={{ marginBottom: 24, border: "1px solid var(--vx-border)", borderRadius: 10, padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ fontWeight: 600 }}>{drillArea.name} — district breakdown</div>
-            <button
-              type="button"
-              onClick={() => setDrillCode(null)}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--vx-text-muted)", display: "flex", alignItems: "center" }}
-              aria-label="Close drill-down"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {codeToNationKey(drillCode) === "S" && (
-            <Note tone="info">
-              Scotland: district-level Price Paid data is not included in this build.
-              Drill-down is available for England and Wales only.
-            </Note>
-          )}
-          {codeToNationKey(drillCode) === "N" && (
-            <Note tone="info">
-              Northern Ireland: Land Registry Price Paid data does not cover NI.
-              Drill-down is available for England and Wales only.
-            </Note>
-          )}
-          {["E", "W"].includes(codeToNationKey(drillCode)) && drillDistricts.length === 0 && (
-            <Note tone="warn">No district data found for this council in the current build.</Note>
-          )}
-          {["E", "W"].includes(codeToNationKey(drillCode)) && drillDistricts.length > 0 && (
-            <Table
-              head={[
-                "Outcode",
-                "Type",
-                { label: "Median price", numeric: true },
-                { label: "Sales", numeric: true },
-                { label: "Flips", numeric: true },
-                { label: "Median uplift", numeric: true },
-                { label: "Median gain", numeric: true },
-              ]}
-              rows={drillDistricts.map(d => ({
-                cells: [
-                  d.outcode,
-                  d.ptype === "T" ? "Terraced" : d.ptype === "S" ? "Semi" : d.ptype,
-                  d.median_price != null ? formatGBP(d.median_price) : "—",
-                  fmtInt(d.sales),
-                  fmtInt(d.flips),
-                  d.flip_uplift_pct != null ? "+" + (d.flip_uplift_pct * 100).toFixed(1) + "%" : "—",
-                  d.flip_gain_gbp != null ? formatGBP(d.flip_gain_gbp) : "—",
-                ],
-                numeric: [false, false, true, true, true, true, true],
-              }))}
-              zebra
-            />
-          )}
-        </div>
-      )}
 
       {/* Footer */}
       <div style={{ borderTop: "1px solid var(--vx-border)", paddingTop: 12, marginTop: 8, fontSize: 12, color: "var(--vx-text-muted)" }}>
