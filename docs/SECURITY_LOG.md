@@ -43,3 +43,40 @@ Reviewer: Claude Code (automated inline review)
 
 Open items:
 - When ONS centroids are added, add their host to `ALLOWED_HOSTS` and log it here.
+
+---
+
+## 2026-10-10 — P09 full branch review (`feature/appraisal-v2` vs `main`, P00–P08, 45 files)
+Reviewer: Claude Code security-reviewer subagent (independent pass)
+
+| # | Severity | Finding | Action | File |
+|---|---|---|---|---|
+| 1 | None | Secrets (ANTHROPIC_API_KEY, EPC_API_KEY) loaded via Firebase Secrets only — absent from client code, public/, bundle.js | No action needed | functions/index.js:8–11 |
+| 2 | None | Firebase Web API key in bundle.js — intended public client identifier, access controlled by auth+rules | No action needed | src/App.jsx:49 |
+| 3 | None | Firestore rules: users/ wildcard gated to uid + email; covers all new P00–P08 subcollections (agents, briefs, buyBoxes, notifications) | No action needed | firestore.rules:6–10 |
+| 4 | None | Firestore rules: marketStats/ — read requires auth+email; write: if false; Admin SDK writes only | No action needed | firestore.rules:11–15 |
+| 5 | None | Firestore rules: mail/ — read+write: if false; Admin SDK only | No action needed | firestore.rules:16–18 |
+| 6 | None | Storage rules: legalPacks/ restricted to uid+email+≤40 MB+PDF content-type | No action needed | storage.rules |
+| 7 | None | XSS: zero dangerouslySetInnerHTML across all src/**/*.jsx; AI output as React text nodes | No action needed | src/ |
+| 8 | None | All 6 callable Functions + estatelyWebhook check request.auth + email before any work | No action needed | functions/index.js |
+| 9 | None | sanitizeLeads() and sanitizeFlag() re-validate all AI-returned fields before Firestore writes | No action needed | functions/index.js:431–453, 764–773 |
+| 10 | None | screener.json — aggregated public OGL statistics only; no personal data | No action needed | public/data/screener.json |
+| 11 | None | build_screener.py: HTTPS-only + host allow-list checked before and after redirects | No action needed | docs/build_screener.py:89–114 |
+| 12 | None | build_screener.py: 1 GB download cap, streaming chunks, atomic .part rename | No action needed | docs/build_screener.py:50, 110 |
+| 13 | None | build_screener.py: no subprocess/shell calls; paths from hardcoded templates only | No action needed | docs/build_screener.py |
+| 14 | None | Legal pack upload path built from auth UID + UUID; Cloud Function validates prefix | No action needed | src/App.jsx:4879, functions/index.js:561–563 |
+| 15 | None | v2.js migration: idempotent, pure, additive, no I/O, no injection surface | No action needed | src/lib/migrations/v2.js |
+| 16 | Low | Emulator hooks (window.__testAuth etc.) in prod bundle, inert without ?useEmulator=1 | Flagged — could guard behind FUNCTIONS_EMULATOR at build time (open item A) | src/App.jsx:71–79 |
+| 17 | Medium | SSRF: recheckLeadStatus fetches caller-supplied sourceUrl with no host allow-list | Awaiting Paul's approval — proposed allow-list code in open items (B) | functions/index.js:827–848 |
+| 18 | Medium | ANTHROPIC_API_URL_OVERRIDE / EPC_API_URL_OVERRIDE read at runtime; misconfigured prod env var could redirect API traffic | Awaiting Paul's approval — FUNCTIONS_EMULATOR guard proposed (C) | functions/index.js:17, 928 |
+| 19 | Low | file.name used in Storage path; Firebase SDK encodes segments; rendered as text node | Noted; no action needed | src/App.jsx:4879, 4961 |
+| 20 | High | npm audit functions/: proxy-addr critical (IP spoofing), @fastify/busboy high, @grpc/grpc-js high, node-forge high via firebase-admin ≤14.3.0 | Awaiting Paul's approval — npm audit fix + firebase-admin ≥14.5.0 (D) | functions/package.json |
+| 21 | High | npm audit root: @grpc/grpc-js high (4 findings) via @firebase/firestore | Awaiting Paul's approval — Firebase JS SDK patch upgrade (E) | package.json |
+| 22–28 | None | No allow read/write: if true; no secrets in git history; repo.js paths from auth UID only; rate limits on AI calls; HMAC timing-safe; email HTML escaped | No action needed | various |
+
+Open items (require Paul's decision before release):
+- **A (Low):** Emulator hooks in prod bundle — wrap in NODE_ENV !== "production" guard.
+- **B (Medium):** Add URL host allow-list to `recheckLeadStatus`. Proposed hosts: rightmove.co.uk, zoopla.co.uk, onthemarket.com, plus auction house domains in use.
+- **C (Medium):** Guard `ANTHROPIC_API_URL_OVERRIDE` / `EPC_API_URL_OVERRIDE` behind `process.env.FUNCTIONS_EMULATOR` so they can't redirect prod API traffic.
+- **D (High — blocks release):** `npm audit fix` in `functions/` + `firebase-admin` ≥14.5.0. Test on emulator.
+- **E (High — blocks release):** Firebase JS client SDK patch upgrade to resolve `@grpc/grpc-js` findings.

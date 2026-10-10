@@ -1,5 +1,26 @@
 # Appraisal v2 — Changelog
 
+## P09 — Security Review · 10 October 2026
+
+**Reviewer:** Claude Code security-reviewer subagent (independent pass, 45 files, P00–P08 scope)
+
+**Results:** 0 Critical · 2 High · 2 Medium · 2 Low · 22 None
+
+**No fixes applied this pass** — all actionable findings require Paul's approval (see open items).
+
+**Open items blocking release (High):**
+- D: `npm audit fix` in `functions/` + `firebase-admin` ≥14.5.0 (proxy-addr critical, node-forge high)
+- E: Firebase JS client SDK patch upgrade (`@grpc/grpc-js` high via `@firebase/firestore`)
+
+**Open items not blocking release (Medium/Low):**
+- B: SSRF host allow-list in `recheckLeadStatus` (defence-in-depth; auth gate is primary protection)
+- C: Guard `ANTHROPIC_API_URL_OVERRIDE` / `EPC_API_URL_OVERRIDE` behind `FUNCTIONS_EMULATOR` env check
+- A: Emulator hooks in prod bundle (inert without `?useEmulator=1`)
+
+**Full log:** `docs/SECURITY_LOG.md` — 2026-10-10 entry, findings #1–28
+
+---
+
 ## P08 — National Area Screener · 10 October 2026
 
 **Files created:**
