@@ -511,36 +511,41 @@ export default function ScreenerView({ settings, onSettingsChange, onAddTargetAr
                   {isDrilled && (
                     <tr>
                       <td colSpan={11} style={{ padding: 0, background: "var(--vx-surface)" }}>
-                        <div style={{ padding: "12px 16px 16px", borderBottom: "2px solid var(--vx-accent)", overflowX: "auto" }}>
+                        <div style={{ padding: "12px 16px 16px", borderBottom: "2px solid var(--vx-accent)" }}>
                           <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>{area.name} — district breakdown</div>
                           {nationKey === "S" && <Note tone="info">Scotland: district-level Price Paid data is not included in this build. Drill-down is available for England and Wales only.</Note>}
                           {nationKey === "N" && <Note tone="info">Northern Ireland: Land Registry Price Paid data does not cover NI. Drill-down is available for England and Wales only.</Note>}
                           {["E", "W"].includes(nationKey) && drillDistricts.length === 0 && <Note tone="warn">No district data found for this council in the current build.</Note>}
                           {["E", "W"].includes(nationKey) && drillDistricts.length > 0 && (
-                            <Table
-                              head={[
-                                "Outcode",
-                                "Type",
-                                { label: "Median price", numeric: true },
-                                { label: "Sales", numeric: true },
-                                { label: "Flips", numeric: true },
-                                { label: "Median uplift", numeric: true },
-                                { label: "Median gain", numeric: true },
-                              ]}
-                              rows={drillDistricts.map(d => ({
-                                cells: [
-                                  d.outcode,
-                                  d.ptype === "T" ? "Terraced" : d.ptype === "S" ? "Semi" : d.ptype,
-                                  d.median_price != null ? formatGBP(d.median_price) : "—",
-                                  fmtInt(d.sales),
-                                  fmtInt(d.flips),
-                                  d.flip_uplift_pct != null ? "+" + (d.flip_uplift_pct * 100).toFixed(1) + "%" : "—",
-                                  d.flip_gain_gbp != null ? formatGBP(d.flip_gain_gbp) : "—",
-                                ],
-                                numeric: [false, false, true, true, true, true, true],
-                              }))}
-                              zebra
-                            />
+                            /* maxWidth: 100vw constrains to viewport on mobile so the table overflows and scrolls */
+                            <div style={{ overflowX: "auto", maxWidth: "calc(100vw - 32px)" }}>
+                              <table className="vx-table vx-table--zebra" style={{ minWidth: 480 }}>
+                                <thead>
+                                  <tr>
+                                    <th>Outcode</th>
+                                    <th>Type</th>
+                                    <th className="n">Median price</th>
+                                    <th className="n">Sales</th>
+                                    <th className="n">Flips</th>
+                                    <th className="n">Median uplift</th>
+                                    <th className="n">Median gain</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {drillDistricts.map((d, i) => (
+                                    <tr key={i}>
+                                      <td>{d.outcode}</td>
+                                      <td>{d.ptype === "T" ? "Terraced" : d.ptype === "S" ? "Semi" : d.ptype}</td>
+                                      <td className="n">{d.median_price != null ? formatGBP(d.median_price) : "—"}</td>
+                                      <td className="n">{fmtInt(d.sales)}</td>
+                                      <td className="n">{fmtInt(d.flips)}</td>
+                                      <td className="n">{d.flip_uplift_pct != null ? "+" + (d.flip_uplift_pct * 100).toFixed(1) + "%" : "—"}</td>
+                                      <td className="n">{d.flip_gain_gbp != null ? formatGBP(d.flip_gain_gbp) : "—"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           )}
                         </div>
                       </td>
