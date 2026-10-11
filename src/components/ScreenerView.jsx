@@ -511,7 +511,7 @@ export default function ScreenerView({ settings, onSettingsChange, onAddTargetAr
                   {isDrilled && (
                     <tr>
                       <td colSpan={11} style={{ padding: 0, background: "var(--vx-surface)" }}>
-                        <div style={{ padding: "12px 16px 16px", borderBottom: "2px solid var(--vx-accent)" }}>
+                        <div style={{ padding: "12px 16px 16px", borderBottom: "2px solid var(--vx-accent)", overflowX: "auto" }}>
                           <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>{area.name} — district breakdown</div>
                           {nationKey === "S" && <Note tone="info">Scotland: district-level Price Paid data is not included in this build. Drill-down is available for England and Wales only.</Note>}
                           {nationKey === "N" && <Note tone="info">Northern Ireland: Land Registry Price Paid data does not cover NI. Drill-down is available for England and Wales only.</Note>}

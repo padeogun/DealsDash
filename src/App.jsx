@@ -9,7 +9,7 @@ import {
   RotateCcw, Info, MapPin, LogOut, Sparkles, Radar, ExternalLink, RefreshCw,
   ArrowRightCircle, ShieldCheck, Users, Phone, Mail, Star, KeyRound, FileWarning,
   Banknote, Calendar, ClipboardCheck, FileText, Upload, BookMarked, RefreshCcw, CreditCard,
-  GripVertical, Layers, ChevronRight, FileDown, Bell, Map, BookOpen,
+  GripVertical, Layers, ChevronRight, FileDown, Bell, Map, BookOpen, Settings2,
 } from "lucide-react";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SOURCING_STAGES, TERMINAL_STAGES, STAGE_COLORS, LEAD_STATUS_TO_STAGE, GATED_STAGES } from "./lib/pipeline.js";
@@ -33,7 +33,7 @@ import SurveyModule from "./modules/survey/SurveyModule.jsx";
 import { defaultRates } from "./modules/survey/data/rates.js";
 import { mergeRefurbItems } from "./modules/survey/lib/applyToDeal.js";
 import { Badge as VxBadge } from "./components/Badge.jsx";
-import { emptyV2Block } from "./lib/migrations/v2.js";
+import { emptyV2Block, DEFAULT_APPRAISAL_SETTINGS } from "./lib/migrations/v2.js";
 import WorkspaceView from "./components/WorkspaceView.jsx";
 import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
@@ -846,6 +846,7 @@ function Sidebar({ tab, setTab, onNav, isDesktop, user, notifUnreadCount = 0 }) 
     { id: "properties",     label: "Properties",        icon: KeyRound },
     { id: "screener",       label: "Area Screener",     icon: Radar },
     { id: "notifications",  label: "Notifications",     icon: Bell },
+    { id: "settings",       label: "Settings",          icon: Settings2 },
     { id: "guide",          label: "User Guide",        icon: BookOpen },
   ];
   return (
@@ -1399,7 +1400,7 @@ function FundingPlannerView({ deal, onChange, settings, defaultBuyBox }) {
   );
 }
 
-const DEAL_TABS = ["Property & comps", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief", "Appraisal v2"];
+const DEAL_TABS = ["Property & comps", "Appraisal v2", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief"];
 
 function _DealHeadlineStrip({ deal, base, verdict, defaultBuyBox }) {
   const isBrrr = deal.fundingMode === "mortgage";
@@ -2567,6 +2568,61 @@ function AiReviewPanel({ deal, metrics }) {
         </div>
       )}
     </Card>
+  );
+}
+
+/* =================================================================================
+   SETTINGS VIEW
+   ================================================================================= */
+
+function SettingsView({ settings, onSettingsChange }) {
+  const appr = settings?.appraisal || DEFAULT_APPRAISAL_SETTINGS;
+  function setAppr(patch) {
+    onSettingsChange({ ...settings, appraisal: { ...appr, ...patch } });
+  }
+  function setReserves(patch) {
+    setAppr({ reserves: { ...(appr.reserves || {}), ...patch } });
+  }
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="font-serif text-2xl font-semibold text-vx-text">Settings</h1>
+        <p className="text-sm text-vx-muted mt-1">Global defaults for appraisal calculations. All values tagged Illustrative — verify against your lender terms before bidding. Each can be overridden per-deal in the Appraisal v2 tab.</p>
+      </div>
+
+      <Card>
+        <SectionTitle icon={SlidersHorizontal}>Appraisal defaults</SectionTitle>
+        <div className="grid md:grid-cols-2 gap-3 mt-2">
+          <PctField label="Flip profit target %" value={appr.profitPctDefault} onChange={(v) => setAppr({ profitPctDefault: v })} step={0.5} />
+          <NumField label="BRRR: accepted cash left in (£)" value={appr.acceptedLeftInDefault} onChange={(v) => setAppr({ acceptedLeftInDefault: v })} />
+          <NumField label="ICR threshold (ratio, e.g. 1.25)" value={appr.icr} onChange={(v) => setAppr({ icr: v })} step={0.05} />
+          <PctField label="ICR stress rate %" value={appr.icrStressRate} onChange={(v) => setAppr({ icrStressRate: v })} step={0.1} />
+          <NumField label="Min net monthly cash flow (£)" value={appr.minNetMonthly} onChange={(v) => setAppr({ minNetMonthly: v })} />
+          <PctField label="Min break-even headroom %" value={appr.minHeadroomPct} onChange={(v) => setAppr({ minHeadroomPct: v })} step={0.5} />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Rental reserves (% of monthly rent)</SectionTitle>
+        <div className="grid md:grid-cols-3 gap-3 mt-2">
+          <PctField label="Void allowance %" value={appr.reserves?.voids} onChange={(v) => setReserves({ voids: v })} />
+          <PctField label="Management fee %" value={appr.reserves?.mgmt} onChange={(v) => setReserves({ mgmt: v })} />
+          <PctField label="Maintenance %" value={appr.reserves?.maint} onChange={(v) => setReserves({ maint: v })} />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Sourcing</SectionTitle>
+        <div className="max-w-xs mt-2">
+          <NumField label="Monthly viewing target" value={appr.viewingTargetPerMonth ?? 20} onChange={(v) => setAppr({ viewingTargetPerMonth: v })} />
+        </div>
+      </Card>
+
+      <div className="text-xs text-vx-muted border border-vx-divider rounded p-3 space-y-1">
+        <p><strong>Monthly burn rate &amp; revolving fund</strong> — in <strong>Capital &amp; cash</strong>.</p>
+        <p><strong>Strategy profile, buy boxes &amp; per-deal assumption overrides</strong> — in <strong>Playbooks</strong>.</p>
+      </div>
+    </div>
   );
 }
 
@@ -6326,6 +6382,7 @@ function AppInner({ user }) {
           {tab === "properties" && !selectedProperty && <PropertiesListView properties={properties} deals={deals} onSelect={setSelectedPropertyId} onAdd={addProperty} onDelete={deleteProperty} />}
           {tab === "properties" && selectedProperty && <PropertyDetailView property={selectedProperty} linkedDeal={deals.find((d) => d.id === selectedProperty.dealId)} onChange={(p) => updateProperty(selectedProperty.id, p)} onDelete={deleteProperty} onBack={() => setSelectedPropertyId(null)} />}
           {tab === "notifications" && <NotificationsView notifications={notifications} onMarkRead={markNotificationRead} onMarkAllRead={markAllNotificationsRead} settings={settings} onSettingsChange={applySettings} onGoToDeal={(id) => { setTab("deals"); setSelectedId(id); }} onGoToLead={() => setTab("sourcing")} />}
+          {tab === "settings" && <SettingsView settings={settings} onSettingsChange={applySettings} />}
           {tab === "guide" && <UserGuideView />}
           <_AttributionFooter />
         </main>
