@@ -42,7 +42,16 @@
 
 ### Smoke test results
 
-*To be completed by Paul before merge/deploy.*
+| # | Item | Status |
+|---|------|--------|
+| 1 | Settings tab visible in sidebar, all fields save | ✅ Fixed 2026-10-11 |
+| 2 | Appraisal v2 tab is 2nd tab (not hidden off-screen) | ✅ Fixed 2026-10-11 |
+| 3 | Flip golden case: GDV £150k, refurb £20k, legals £3k, finance £5k → budget £110,800, SDLT £5,276.19 | ⬜ Paul to verify |
+| 4 | BRRR/bridging panel: day-one release £63,350 for golden inputs | ⬜ Paul to verify |
+| 5 | Funnel tab renders; add a viewing against a lead | ⬜ Paul to verify |
+| 6 | Agents tab: add an agent, save, reload — persists | ⬜ Paul to verify |
+| 7 | Screener drill-down: district table scrolls L/R on mobile width | ✅ Fixed 2026-10-11 |
+| 8 | Deal screen readable at ≤400px viewport width | ⬜ Paul to verify |
 
 ---
 
