@@ -134,9 +134,10 @@ const BASIS_TONE   = { quote: "good", estimate: "default", benchmark: "warn", il
 
 /**
  * Appraisal v2 tab rendered inside DealDetailView.
- * @param {{ deal, onChange, settings }} props
+ * @param {{ deal, onChange, settings, buyBox }} props
+ *   buyBox — the deal's linked Playbook (or null); drives strategy + threshold defaults
  */
-export default function AppraisalV2Tab({ deal, onChange, settings }) {
+export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null }) {
   const [stressExpanded, setStressExpanded] = useState(false);
   const [overridesOpen, setOverridesOpen] = useState(false);
 
@@ -164,18 +165,25 @@ export default function AppraisalV2Tab({ deal, onChange, settings }) {
   // Project duration from phases — used by holding cost calculation
   const projMonths = totalProjectMonths(deal.phases || []);
 
-  // ── Resolved settings (per-deal overrides fall back to global) ────────────
+  // ── Resolved settings — priority: per-deal override → Playbook → global ──
   const apprCfg = settings?.appraisal || DEFAULT_APPRAISAL_SETTINGS;
-  const strategy       = v2.strategy || "flip";
-  const profitPct      = v2.profitPct      ?? apprCfg.profitPctDefault;   // e.g. 0.15
-  const ltv            = v2.refinance?.ltv ?? 0.75;
+  // bbVal reads a single value from the linked Playbook's assumptions (null if absent)
+  const bbVal = (key) => buyBox?.assumptions?.[key]?.value ?? null;
+
+  const strategy       = v2.strategy ?? buyBox?.strategy ?? "flip";
+  const profitPct      = v2.profitPct      ?? bbVal("targetProfitOnCostPct") ?? apprCfg.profitPctDefault;
+  const ltv            = v2.refinance?.ltv ?? bbVal("refiLtvPct") ?? 0.75;
   const refiFees       = v2.refinance?.refiFees ?? 0;
-  const acceptedLeftIn = v2.refinance?.acceptedLeftIn ?? apprCfg.acceptedLeftInDefault ?? 0;
-  const icrThreshold   = v2.icr         ?? apprCfg.icr;
-  const icrStressRate  = apprCfg.icrStressRate;
+  const acceptedLeftIn = v2.refinance?.acceptedLeftIn ?? bbVal("maxMoneyLeftInGBP") ?? apprCfg.acceptedLeftInDefault ?? 0;
+  const icrThreshold   = v2.icr         ?? bbVal("icrThresholdPct")  ?? apprCfg.icr;
+  const icrStressRate  = bbVal("icrStressRatePct") ?? apprCfg.icrStressRate;
   const minNetMonthly  = v2.minNetMonthly ?? apprCfg.minNetMonthly;
   const minHeadroom    = v2.minHeadroomPct ?? apprCfg.minHeadroomPct;
-  const reserves       = v2.reserves    ?? apprCfg.reserves ?? { mgmt: 0.10, maint: 0.08, voids: 0.04 };
+  const reserves       = v2.reserves ?? {
+    mgmt:  bbVal("managementPct")  ?? apprCfg.reserves?.mgmt  ?? 0.10,
+    maint: bbVal("maintenancePct") ?? apprCfg.reserves?.maint ?? 0.08,
+    voids: bbVal("voidPct")        ?? apprCfg.reserves?.voids ?? 0.04,
+  };
   const rent           = v2.rent?.monthly ?? 0;
   const btlRate        = deal.btlRate ?? 0.065;
   const valuation      = v2.valuation || { worst: null, mid: null, best: null, basis: "worst", comparables: [], singlePoint: false };
@@ -461,6 +469,18 @@ export default function AppraisalV2Tab({ deal, onChange, settings }) {
             ))}
           </div>
         </div>
+
+        {/* Playbook badge — shows which playbook's strategy + thresholds are in effect */}
+        {buyBox && (
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-vx-muted">
+            <span>Playbook:</span>
+            <A2Badge tone="info">{buyBox.name}</A2Badge>
+            <A2Badge tone="default">{(buyBox.strategy || "flip").toUpperCase()}</A2Badge>
+            {v2.strategy && v2.strategy !== buyBox.strategy && (
+              <A2Badge tone="warn">strategy overridden</A2Badge>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <A2KPI label="Max price" value={fmtGBP(split?.price)} tone={split ? "good" : "default"} />
@@ -1176,10 +1196,12 @@ export default function AppraisalV2Tab({ deal, onChange, settings }) {
         {overridesOpen && (
           <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
             <A2PctField label={<>Profit target % GDV<A2Illustrative /></>}
-              value={v2.profitPct} placeholder={fmtPct(apprCfg.profitPctDefault)}
+              value={v2.profitPct}
+              placeholder={fmtPct(bbVal("targetProfitOnCostPct") ?? apprCfg.profitPctDefault)}
               onChange={(v) => setV2({ profitPct: v })} />
             <A2PctField label={<>ICR threshold<A2Illustrative /></>}
-              value={v2.icr} placeholder={String(apprCfg.icr)}
+              value={v2.icr}
+              placeholder={String(bbVal("icrThresholdPct") ?? apprCfg.icr)}
               onChange={(v) => setV2({ icr: v })} />
             <A2NumField label={<>Min net monthly £<A2Illustrative /></>}
               value={v2.minNetMonthly} placeholder={String(apprCfg.minNetMonthly)}
@@ -1188,15 +1210,17 @@ export default function AppraisalV2Tab({ deal, onChange, settings }) {
               value={v2.minHeadroomPct} placeholder={fmtPct(apprCfg.minHeadroomPct)}
               onChange={(v) => setV2({ minHeadroomPct: v })} />
             <A2NumField label={<>Accepted cash left in £<A2Illustrative /></>}
-              value={v2.refinance?.acceptedLeftIn} placeholder={String(apprCfg.acceptedLeftInDefault)}
+              value={v2.refinance?.acceptedLeftIn}
+              placeholder={String(bbVal("maxMoneyLeftInGBP") ?? apprCfg.acceptedLeftInDefault)}
               onChange={(v) => setRefinance({ acceptedLeftIn: v })} />
             <A2PctField label={<>Refi LTV<A2Illustrative /></>}
-              value={v2.refinance?.ltv} placeholder={String((apprCfg.icr || 0.75) * 100)}
+              value={v2.refinance?.ltv}
+              placeholder={String(round2((bbVal("refiLtvPct") ?? 0.75) * 100))}
               onChange={(v) => setRefinance({ ltv: v })} />
           </div>
         )}
         <p className="text-xs text-vx-muted mt-2">
-          Leave blank to use global defaults from Settings &rsaquo; Appraisal thresholds.
+          Leave blank to use defaults from{buyBox ? <> Playbook &ldquo;{buyBox.name}&rdquo;, then</> : ""} Settings &rsaquo; Appraisal thresholds.
         </p>
       </A2Card>
 

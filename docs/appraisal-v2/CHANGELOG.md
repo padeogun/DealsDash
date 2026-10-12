@@ -1,5 +1,26 @@
 # Appraisal v2 — Changelog
 
+## Phase C — Playbook strategy + threshold defaults · 12 October 2026
+
+### Changed
+- `AppraisalV2Tab` now accepts a `buyBox` prop (the deal's linked Playbook)
+- Resolved-value priority chain: **per-deal override → Playbook assumption → global Settings**
+  - `strategy`: `v2.strategy` → `buyBox.strategy` → `"flip"`
+  - `profitPct`: `v2.profitPct` → `buyBox.assumptions.targetProfitOnCostPct` → `apprCfg.profitPctDefault`
+  - `ltv`: `v2.refinance.ltv` → `buyBox.assumptions.refiLtvPct` → `0.75`
+  - `acceptedLeftIn`: `v2.refinance.acceptedLeftIn` → `buyBox.assumptions.maxMoneyLeftInGBP` → `apprCfg.acceptedLeftInDefault`
+  - `icrThreshold`: `v2.icr` → `buyBox.assumptions.icrThresholdPct` → `apprCfg.icr`
+  - `icrStressRate`: `buyBox.assumptions.icrStressRatePct` → `apprCfg.icrStressRate`
+  - `reserves` (mgmt/maint/voids): per-deal object → Playbook individual keys → global defaults
+- Playbook badge added to strategy card — shows linked Playbook name + strategy; "strategy overridden" if `v2.strategy` differs from `buyBox.strategy`
+- Per-deal override placeholders now show the Playbook value (if available) rather than the bare global default, so the user sees what will actually be used
+- **Bug fix**: Refi LTV override placeholder was `String(apprCfg.icr * 100)` = "125" (ICR ratio used by mistake); corrected to `String(round2((bbVal("refiLtvPct") ?? 0.75) * 100))` = "75"
+- Override footer note updated to mention "Playbook → Settings" cascade
+- `buyBox` prop wired from `AppInner` → `DealDetailView` → `AppraisalV2Tab`; resolved as `buyBoxes.find(b => b.id === selectedDeal.buyBoxId) || defaultBuyBox`
+- No new financial formulas introduced in Phase C (priority chain is value-selection only); 229/229 existing tests pass
+
+---
+
 ## Phase B — Lead→Deal promotion carry-forward · 12 October 2026
 
 ### Changed

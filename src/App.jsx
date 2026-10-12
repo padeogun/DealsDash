@@ -1491,7 +1491,7 @@ function _AttributionFooter() {
   );
 }
 
-function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultBuyBox, settings, onMoveToRental, alreadyLinkedProperty, ownerUid, surveyRates, onSurveyRatesChange, marketStats }) {
+function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultBuyBox, buyBox = null, settings, onMoveToRental, alreadyLinkedProperty, ownerUid, surveyRates, onSurveyRatesChange, marketStats }) {
   const [subTab, setSubTab] = useState(DEAL_TABS[0]);
   const [sim, setSim] = useState(null); // simulation overlay, transient
   const [hpiLoading, setHpiLoading] = useState(false);
@@ -2011,7 +2011,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
       )}
 
       {subTab === "Appraisal" && (
-        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} />
+        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} buyBox={buyBox} />
       )}
 
       <Card>
@@ -6264,7 +6264,7 @@ function AppInner({ user }) {
           {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} agents={agents} setAgents={(newAgents) => syncAgents(newAgents, agents)} settings={settings} onSettingsChange={applySettings} />}
           {tab === "screener" && <ScreenerView settings={settings} onSettingsChange={applySettings} onAddTargetAreas={addTargetAreas} />}
           {tab === "deals" && !selectedDeal && <DealsListView deals={deals} thresholds={effectiveThresholds} onSelect={setSelectedId} onAdd={addDeal} onAddExample={addExampleDeal} onDelete={deleteDeal} marketStats={marketStats} />}
-          {tab === "deals" && selectedDeal && <DealDetailView deal={selectedDeal} onChange={(p) => updateDeal(selectedDeal.id, p)} onDelete={deleteDeal} onBack={() => setSelectedId(null)} thresholds={effectiveThresholds} defaultBuyBox={defaultBuyBox} settings={settings} onMoveToRental={() => moveDealToRentalManagement(selectedDeal)} alreadyLinkedProperty={properties.find((p) => p.dealId === selectedDeal.id)} ownerUid={user.uid} surveyRates={settings.surveyRates} onSurveyRatesChange={(surveyRates) => applySettings({ ...settings, surveyRates })} marketStats={marketStats} />}
+          {tab === "deals" && selectedDeal && <DealDetailView deal={selectedDeal} onChange={(p) => updateDeal(selectedDeal.id, p)} onDelete={deleteDeal} onBack={() => setSelectedId(null)} thresholds={effectiveThresholds} defaultBuyBox={defaultBuyBox} buyBox={buyBoxes.find(b => b.id === selectedDeal.buyBoxId) || defaultBuyBox} settings={settings} onMoveToRental={() => moveDealToRentalManagement(selectedDeal)} alreadyLinkedProperty={properties.find((p) => p.dealId === selectedDeal.id)} ownerUid={user.uid} surveyRates={settings.surveyRates} onSurveyRatesChange={(surveyRates) => applySettings({ ...settings, surveyRates })} marketStats={marketStats} />}
           {tab === "playbooks" && <PlaybooksView buyBoxes={buyBoxes} onBuyBoxesChange={(newBoxes) => syncBuyBoxes(newBoxes, buyBoxes)} onBuyBoxFiltersChange={saveBuyBoxFilters} leads={leads} deals={deals} />}
           {tab === "capital" && <CapitalCashFlowView ledger={ledger} setLedger={(newLedger) => syncLedger(newLedger, ledger)} settings={settings} setSettings={applySettings} deals={deals} onResetAll={resetAll} />}
           {tab === "planner" && <BusinessPlannerView settings={settings} setSettings={applySettings} deals={deals} ledger={ledger} />}
