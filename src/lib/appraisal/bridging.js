@@ -102,3 +102,21 @@ export function bridgeRelease({
 
   return { dayOneRelease, totalCostAt, redemptionAt, extensionCostPerMonth, monthlyServicing };
 }
+
+/**
+ * Lump-sum finance cost path — use when the user enters a fixed total finance cost
+ * rather than computing it via the bridging calculator.
+ * Returns the same shape as bridgeRelease() with unknown fields set to null.
+ * @param {number|null} financeCostLump  total finance cost entered by the user (£)
+ */
+export function bridgeLump(financeCostLump) {
+  const cost = Number(financeCostLump) || 0;
+  return {
+    dayOneRelease:         null, // cannot compute without LTV
+    financeCost:           cost,
+    totalCostAt:           () => cost,
+    redemptionAt:          () => null,
+    extensionCostPerMonth: null,
+    monthlyServicing:      0,
+  };
+}

@@ -35,10 +35,20 @@ describe("migrateV2Settings", () => {
 // ── Deal migration — idempotency ──────────────────────────────────────────────
 
 describe("migrateV2Deal — idempotency", () => {
-  it("already-migrated deal returned unchanged", () => {
-    const existing = { id: "x", v2: { valuation: { worst: 200000 } } };
+  it("fully-migrated deal (all sub-blocks present) returned as same reference", () => {
+    const existing = { id: "x", v2: emptyV2Block() };
     const r = migrateV2Deal(existing);
-    expect(r).toBe(existing);  // same reference
+    expect(r).toBe(existing);  // nothing missing — same reference
+  });
+
+  it("v2 deal missing sub-blocks gets upgraded (v2 → v3)", () => {
+    const partial = { id: "x", v2: { valuation: { worst: 200000 } } };
+    const r = migrateV2Deal(partial);
+    expect(r).not.toBe(partial);              // new object returned
+    expect(r.v2.valuation.worst).toBe(200000); // existing data preserved
+    expect(r.v2.legal).toBeDefined();
+    expect(r.v2.refurb).toBeDefined();
+    expect(r.v2.holding).toBeDefined();
   });
 
   it("running twice produces the same result", () => {

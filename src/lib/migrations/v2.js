@@ -23,10 +23,39 @@
  */
 
 /**
+ * @typedef {{ mode:'lump'|'detail',
+ *   lumpTotal:number|null, lumpBasis:'quote'|'estimate'|'benchmark'|'illustrative',
+ *   solicitor:number|null, searches:number|null, survey:number|null,
+ *   broker:number|null, valuation:number|null, landReg:number|null,
+ *   other:number|null }} DealV2Legal
+ */
+
+/**
+ * @typedef {{ label:string, low:number|null, high:number|null, amount:number|null }} RefurbItem
+ */
+
+/**
+ * @typedef {{ mode:'lump'|'detail',
+ *   lumpTotal:number|null, lumpBasis:'quote'|'estimate'|'benchmark'|'illustrative',
+ *   items:RefurbItem[], scenario:'high'|'mid'|'low',
+ *   contingencyPct:number }} DealV2Refurb
+ */
+
+/**
+ * @typedef {{ mode:'lump'|'detail',
+ *   lumpMonthly:number|null,
+ *   ctax:number|null, insurance:number|null,
+ *   utilities:number|null, other:number|null }} DealV2Holding
+ */
+
+/**
  * @typedef {{
  *   valuation: { best:number|null, mid:number|null, worst:number|null,
  *     basis:'worst'|'mid'|'best', comparables:object[], singlePoint:boolean },
  *   costLines: CostLine[],
+ *   legal: DealV2Legal,
+ *   refurb: DealV2Refurb,
+ *   holding: DealV2Holding,
  *   funding: { sources: FundingSource[] },
  *   refinance: { ltv:number|null, lenderRoute:string|null,
  *     refiFees:number|null, acceptedLeftIn:number|null },
@@ -88,6 +117,20 @@ export function emptyV2Block() {
     minHeadroomPct:   null,
     reserves:         null,
     bridgeInterestMode: null,  // null → 'retained'; override to 'serviced' per deal
+    // Structured cost sub-blocks — lump or detail mode per cost group (Phase A1)
+    legal: {
+      mode: "lump", lumpTotal: null, lumpBasis: "estimate",
+      solicitor: null, searches: null, survey: null,
+      broker: null, valuation: null, landReg: null, other: null,
+    },
+    refurb: {
+      mode: "lump", lumpTotal: null, lumpBasis: "estimate",
+      items: [], scenario: "high", contingencyPct: 0.15,
+    },
+    holding: {
+      mode: "lump", lumpMonthly: null,
+      ctax: null, insurance: null, utilities: null, other: null,
+    },
     // Private capital pool allocation for this deal (P04)
     capitalAllocated:       null,   // £ from the private pool
     capitalDeployedAt:      null,   // ISO date string "YYYY-MM-DD"
@@ -142,6 +185,48 @@ function prefillCostLines(deal) {
     });
 }
 
+/** Return a fresh empty legal cost block (no direct v1 equivalent). */
+function prefillLegal(/* deal */) {
+  return {
+    mode: "lump", lumpTotal: null, lumpBasis: "estimate",
+    solicitor: null, searches: null, survey: null,
+    broker: null, valuation: null, landReg: null, other: null,
+  };
+}
+
+/**
+ * Map v1 refurbItems to a v2 refurb block.
+ * Items with low/high values → detail mode. No items → lump mode.
+ */
+function prefillRefurb(deal) {
+  const src = (deal.refurbItems || []).filter((i) => Number(i.low) > 0 || Number(i.high) > 0);
+  if (src.length > 0) {
+    return {
+      mode: "detail", lumpTotal: null, lumpBasis: "estimate",
+      items: src.map((i) => ({
+        label:  i.name,
+        low:    Number(i.low)  || null,
+        high:   Number(i.high) || null,
+        amount: null,
+      })),
+      scenario:       "high",
+      contingencyPct: 0.15,
+    };
+  }
+  return {
+    mode: "lump", lumpTotal: null, lumpBasis: "estimate",
+    items: [], scenario: "high", contingencyPct: 0.15,
+  };
+}
+
+/** Return a fresh empty holding cost block (no direct v1 equivalent). */
+function prefillHolding(/* deal */) {
+  return {
+    mode: "lump", lumpMonthly: null,
+    ctax: null, insurance: null, utilities: null, other: null,
+  };
+}
+
 /** Map v1 funding mode to a v2 funding source entry. */
 function prefillFunding(deal) {
   if (deal.fundingMode === "bridge" || !deal.fundingMode) {
@@ -174,28 +259,40 @@ export function migrateV2Settings(settings) {
 
 /**
  * Add v2 appraisal fields to a deal document, pre-filling from v1 where unambiguous.
- * Idempotent: if deal.v2 already exists it is returned unchanged.
+ * v1 → v2: full migration when deal.v2 is absent.
+ * v2 → v3: additive upgrade — adds legal/refurb/holding sub-blocks if missing (RULE 14).
  * Never deletes or renames v1 fields.
  */
 export function migrateV2Deal(deal) {
-  if (deal?.v2) return deal;
+  if (!deal?.v2) {
+    // v1 → v2: full migration
+    const v2 = emptyV2Block();
+    v2.valuation = prefillValuation(deal);
+    v2.costLines = prefillCostLines(deal);
+    v2.funding   = prefillFunding(deal);
+    v2.refinance = {
+      ltv:            Number(deal.btlLtv) || 0.75,
+      lenderRoute:    null,
+      refiFees:       null,
+      acceptedLeftIn: null,
+    };
+    v2.rent = {
+      monthly:  Number(deal.monthlyRent) > 0 ? Number(deal.monthlyRent) : null,
+      evidence: [],
+    };
+    v2.legal   = prefillLegal(deal);
+    v2.refurb  = prefillRefurb(deal);
+    v2.holding = prefillHolding(deal);
+    return { ...deal, v2 };
+  }
 
-  const v2 = emptyV2Block();
-  v2.valuation = prefillValuation(deal);
-  v2.costLines = prefillCostLines(deal);
-  v2.funding   = prefillFunding(deal);
-  v2.refinance = {
-    ltv:          Number(deal.btlLtv)      || 0.75,
-    lenderRoute:  null,
-    refiFees:     null,
-    acceptedLeftIn: null,
-  };
-  v2.rent = {
-    monthly:  Number(deal.monthlyRent) > 0 ? Number(deal.monthlyRent) : null,
-    evidence: [],
-  };
-
-  return { ...deal, v2 };
+  // v2 → v3: add missing sub-blocks (RULE 14: additive only, never overwrites)
+  const additions = {};
+  if (!deal.v2.legal)   additions.legal   = prefillLegal(deal);
+  if (!deal.v2.refurb)  additions.refurb  = prefillRefurb(deal);
+  if (!deal.v2.holding) additions.holding = prefillHolding(deal);
+  if (Object.keys(additions).length === 0) return deal;
+  return { ...deal, v2: { ...deal.v2, ...additions } };
 }
 
 /**
