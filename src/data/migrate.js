@@ -25,7 +25,7 @@ export async function runMigrationIfNeeded(db, uid, onProgress) {
   // ── Pass 1: schema v2 ───────────────────────────────────────────────────────
   const settingsSnap = await getDoc(repo.settingsDocRef(db, uid));
   const settingsData = settingsSnap.exists() ? settingsSnap.data() : null;
-  const alreadyV2 = settingsData?.schemaVersion === 2;
+  const alreadyV2 = (settingsData?.schemaVersion || 0) >= 2;
 
   if (!alreadyV2) {
     const legacyRef = doc(db, "users", uid, "appData", "main");

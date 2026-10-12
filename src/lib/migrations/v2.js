@@ -16,7 +16,10 @@
  *   ltvPct?:number, monthlyRate?:number, termMonths?:number|null,
  *   arrangementPct?:number, exitPct?:number,
  *   interestMode?:'retained'|'serviced'|'rolled',
- *   exitFeeTiming?:'start'|'redemption' }} FundingSource
+ *   exitFeeTiming?:'start'|'redemption',
+ *   brokerFee?:number|null, valuationFee?:number|null,
+ *   lenderLegal?:number|null, admin?:number|null,
+ *   extensionRate?:number|null }} FundingSource
  */
 
 /**
@@ -85,6 +88,13 @@ export function emptyV2Block() {
     minHeadroomPct:   null,
     reserves:         null,
     bridgeInterestMode: null,  // null → 'retained'; override to 'serviced' per deal
+    // Private capital pool allocation for this deal (P04)
+    capitalAllocated:       null,   // £ from the private pool
+    capitalDeployedAt:      null,   // ISO date string "YYYY-MM-DD"
+    capitalExpectedReturnAt: null,  // ISO date string
+    capitalReturnedAt:      null,   // ISO date string — set when capital is returned
+    // Bridge source toggle: use computed finance cost in engine rather than manual cost line
+    useComputedFinance:     false,
     // Cached engine outputs — written by v2 engine, not by user edits
     results:        null,
     walkaway:       null,
