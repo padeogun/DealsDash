@@ -1,5 +1,15 @@
 # Appraisal v2 — Changelog
 
+## Phase B — Lead→Deal promotion carry-forward · 12 October 2026
+
+### Changed
+- `prefillValuation()` now checks `estResaleLow`/`estResaleHigh` before `gdvOverride` — promoted deals get a proper worst/mid/best triad rather than collapsing to a single midpoint (RULE 9)
+- `leadToDealPartial()` passes `estResaleLow`/`estResaleHigh` through to the deal object
+- `promoteLeadToDeal()` strips the pre-set empty v2 block and calls `migrateV2Deal()` in one pass, pre-filling: valuation from resale range, refurb from estimate, bridge funding from buy-box LTV/rate, refinance LTV from `btlLtv`
+- 11 new tests; 229/229 passing
+
+---
+
 ## Phase A2 — 7-tab restructure + structured cost entry · 12 October 2026
 
 ### Changed
