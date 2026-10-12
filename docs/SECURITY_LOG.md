@@ -66,17 +66,19 @@ Reviewer: Claude Code security-reviewer subagent (independent pass)
 | 13 | None | build_screener.py: no subprocess/shell calls; paths from hardcoded templates only | No action needed | docs/build_screener.py |
 | 14 | None | Legal pack upload path built from auth UID + UUID; Cloud Function validates prefix | No action needed | src/App.jsx:4879, functions/index.js:561–563 |
 | 15 | None | v2.js migration: idempotent, pure, additive, no I/O, no injection surface | No action needed | src/lib/migrations/v2.js |
-| 16 | Low | Emulator hooks (window.__testAuth etc.) in prod bundle, inert without ?useEmulator=1 | Flagged — could guard behind FUNCTIONS_EMULATOR at build time (open item A) | src/App.jsx:71–79 |
-| 17 | Medium | SSRF: recheckLeadStatus fetches caller-supplied sourceUrl with no host allow-list | Awaiting Paul's approval — proposed allow-list code in open items (B) | functions/index.js:827–848 |
-| 18 | Medium | ANTHROPIC_API_URL_OVERRIDE / EPC_API_URL_OVERRIDE read at runtime; misconfigured prod env var could redirect API traffic | Awaiting Paul's approval — FUNCTIONS_EMULATOR guard proposed (C) | functions/index.js:17, 928 |
+| 16 | Low | Emulator hooks (window.__testAuth etc.) in prod bundle, inert without ?useEmulator=1 | **Fixed 2026-10-12:** `process.env.NODE_ENV !== "production"` guard added; `--define:process.env.NODE_ENV='"production"'` added to build:js so esbuild dead-code-eliminates the entire block. All `window.__test*` globals absent from production bundle. | src/App.jsx:71–79, package.json |
+| 17 | Medium | SSRF: recheckLeadStatus fetches caller-supplied sourceUrl with no host allow-list | **Fixed 2026-10-12:** `RECHECK_ALLOWED_HOSTS` allow-list added (rightmove, zoopla, onthemarket, propertytorenovate, auctionhouse, sdlauctions, eigpropertyauctions, allsop, savills, estately). URL validated before fetch; unknown host → `invalid-argument` error. Add new hosts to the list as new auction platforms are used. | functions/index.js |
+| 18 | Medium | ANTHROPIC_API_URL_OVERRIDE / EPC_API_URL_OVERRIDE read at runtime; misconfigured prod env var could redirect API traffic | **Fixed 2026-10-12:** Both URL constants now only read the override when `process.env.FUNCTIONS_EMULATOR` is truthy; in production the real API endpoints are always used. | functions/index.js |
 | 19 | Low | file.name used in Storage path; Firebase SDK encodes segments; rendered as text node | Noted; no action needed | src/App.jsx:4879, 4961 |
 | 20 | High | npm audit functions/: proxy-addr critical (IP spoofing), @fastify/busboy high, @grpc/grpc-js high, node-forge high via firebase-admin ≤14.3.0 | **Fixed 2026-10-10:** `npm audit fix` (non-breaking) + `firebase-admin@14.5.0`. Result: 0 vulnerabilities. Tested on emulator — all 10 functions loaded, app functional. | functions/package.json |
 | 21 | High | npm audit root: @grpc/grpc-js high (4 findings) via @firebase/firestore | **Accepted risk 2026-10-10:** `@firebase/firestore` pins `@grpc/grpc-js ~1.9.0` across all firebase 12.x and 13.x. The only npm-suggested fix is firebase@9.14.0 (major downgrade — refused). Upgraded firebase@12.17.1 → 12.19.0 (latest 12.x patch). The grpc transport is not used by the browser Firebase SDK (it uses WebChannel/HTTP); this advisory has no runtime impact on the client app. Remaining unfixable dev-tool advisories (vitest/tinypool test-time, tailwindcss/braces build-time, esbuild dev-server-only) are accepted as non-production risks. | package.json |
 | 22–28 | None | No allow read/write: if true; no secrets in git history; repo.js paths from auth UID only; rate limits on AI calls; HMAC timing-safe; email HTML escaped | No action needed | various |
 
-Open items (require Paul's decision before release):
-- **A (Low):** Emulator hooks in prod bundle — wrap in NODE_ENV !== "production" guard.
-- **B (Medium):** Add URL host allow-list to `recheckLeadStatus`. Proposed hosts: rightmove.co.uk, zoopla.co.uk, onthemarket.com, plus auction house domains in use.
-- **C (Medium):** Guard `ANTHROPIC_API_URL_OVERRIDE` / `EPC_API_URL_OVERRIDE` behind `process.env.FUNCTIONS_EMULATOR` so they can't redirect prod API traffic.
-- ~~**D (High — blocks release):** `npm audit fix` in `functions/` + `firebase-admin` ≥14.5.0. Test on emulator.~~ **RESOLVED 2026-10-10.**
+Open items:
+- ~~**A (Low):** Emulator hooks in prod bundle.~~ **RESOLVED 2026-10-12.**
+- ~~**B (Medium):** SSRF allow-list for `recheckLeadStatus`.~~ **RESOLVED 2026-10-12.**
+- ~~**C (Medium):** API URL override guard.~~ **RESOLVED 2026-10-12.**
+- ~~**D (High — blocks release):** `npm audit fix` in `functions/` + `firebase-admin` ≥14.5.0.~~ **RESOLVED 2026-10-10.**
 - ~~**E (High — blocks release):** Firebase JS client SDK patch upgrade to resolve `@grpc/grpc-js` findings.~~ **CLOSED 2026-10-10 — accepted risk, not exploitable in browser execution path.**
+
+All known security findings resolved or accepted. No open items.
