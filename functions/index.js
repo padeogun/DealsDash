@@ -12,9 +12,11 @@ const ESTATELY_WEBHOOK_SECRET = defineSecret("ESTATELY_WEBHOOK_SECRET");
 // ALLOWED_EMAIL — also defined in src/App.jsx:52 and firestore.rules:7 — update all three together.
 const ALLOWED_EMAIL = "paul.a.adeogun@gmail.com";
 
-// Overridable only for local emulator testing (set via functions/.env.local) —
-// in production this always resolves to the real Anthropic endpoint.
-const ANTHROPIC_API_URL = process.env.ANTHROPIC_API_URL_OVERRIDE || "https://api.anthropic.com/v1/messages";
+// URL overrides are only honoured when the Functions emulator is running.
+// In production FUNCTIONS_EMULATOR is unset, so the real endpoints are always used.
+const ANTHROPIC_API_URL = process.env.FUNCTIONS_EMULATOR
+  ? (process.env.ANTHROPIC_API_URL_OVERRIDE || "https://api.anthropic.com/v1/messages")
+  : "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
 
 exports.reviewDeal = onCall({ secrets: [ANTHROPIC_API_KEY], cors: true, timeoutSeconds: 60 }, async (request) => {
@@ -823,6 +825,29 @@ exports.recheckLeadStatus = onCall({ secrets: [ANTHROPIC_API_KEY], cors: true, t
     throw new HttpsError("invalid-argument", "Need at least a source URL or an address to check.");
   }
 
+  // SSRF guard: only fetch URLs from known UK property portals and auction platforms.
+  // Add new hosts here when new auction house domains appear in production leads.
+  const RECHECK_ALLOWED_HOSTS = [
+    "rightmove.co.uk",
+    "zoopla.co.uk",
+    "onthemarket.com",
+    "propertytorenovate.co.uk",
+    "auctionhouse.co.uk",
+    "sdlauctions.co.uk",
+    "eigpropertyauctions.co.uk",
+    "allsopauctions.com",
+    "savills.com",
+    "estately.com",
+  ];
+  if (sourceUrl) {
+    let hostname;
+    try { hostname = new URL(sourceUrl).hostname; } catch { hostname = ""; }
+    const allowed = RECHECK_ALLOWED_HOSTS.some(h => hostname === h || hostname.endsWith("." + h));
+    if (!allowed) {
+      throw new HttpsError("invalid-argument", `sourceUrl host '${hostname}' is not on the allow-list.`);
+    }
+  }
+
   // ---- Attempt 1: direct fetch of the source page ----
   if (sourceUrl) {
     try {
@@ -925,7 +950,9 @@ async function classifyStatus(pageText, method) {
    a different, now-retired version of the service.
    ================================================================================= */
 
-const EPC_API_URL = process.env.EPC_API_URL_OVERRIDE || "https://api.get-energy-performance-data.communities.gov.uk/api/domestic/search";
+const EPC_API_URL = process.env.FUNCTIONS_EMULATOR
+  ? (process.env.EPC_API_URL_OVERRIDE || "https://api.get-energy-performance-data.communities.gov.uk/api/domestic/search")
+  : "https://api.get-energy-performance-data.communities.gov.uk/api/domestic/search";
 
 exports.checkEpcRegister = onCall({ secrets: [EPC_API_KEY], cors: true, timeoutSeconds: 30 }, async (request) => {
   const email = (request.auth && request.auth.token && request.auth.token.email) || "";

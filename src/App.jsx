@@ -65,10 +65,10 @@ const db = getFirestore(firebaseApp);
 const functionsInstance = getFunctions(firebaseApp);
 const storage = getStorage(firebaseApp);
 
-// Test-only hook: if the page is loaded with ?useEmulator=1, point at local emulators
-// instead of the live project, and expose the SDK instances for automated testing.
-// This block is inert in production — no real user would add this query param.
-if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("useEmulator") === "1") {
+// Test-only hook: stripped from production bundle by esbuild dead-code elimination
+// (build:js passes --define:process.env.NODE_ENV='"production"').
+if (process.env.NODE_ENV !== "production" &&
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("useEmulator") === "1") {
   connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "localhost", 8080);
   connectFunctionsEmulator(functionsInstance, "localhost", 5001);

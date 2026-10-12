@@ -4,7 +4,7 @@
   "description": "DealsDash — property deal and business cash flow dashboard",
   "private": true,
   "scripts": {
-    "build:js": "esbuild src/main.jsx --bundle --format=iife --outfile=public/bundle.js --minify --loader:.js=jsx --loader:.png=dataurl",
+    "build:js": "esbuild src/main.jsx --bundle --format=iife --outfile=public/bundle.js --minify --loader:.js=jsx --loader:.png=dataurl --define:process.env.NODE_ENV='\"production\"'",
     "build:css": "tailwindcss -i src/tailwind-input.css -o public/styles.css --minify",
     "build": "npm run build:css && npm run build:js",
     "deploy": "npm run build && firebase deploy --only hosting,firestore:rules,storage,functions",
