@@ -2,6 +2,7 @@ import {
   collection, doc, query, orderBy, limit,
   getDocs, setDoc, deleteDoc, writeBatch,
 } from "firebase/firestore";
+import { checkDocSize, WARN_BYTES, BLOCK_BYTES } from "../lib/docSize.js";
 
 // ── Path refs ──────────────────────────────────────────────────────────────
 
@@ -20,12 +21,21 @@ export const ledgerDocRef     = (db, uid, id) => doc(db, "users", uid, "ledger",
 export const contactsColRef   = (db, uid) => collection(db, "users", uid, "contacts");
 export const contactDocRef    = (db, uid, id) => doc(db, "users", uid, "contacts", id);
 
+// Agents — separate from settings so agent history survives a settings reset.
+export const agentsColRef     = (db, uid) => collection(db, "users", uid, "agents");
+export const agentDocRef      = (db, uid, id) => doc(db, "users", uid, "agents", id);
+
 export const propertiesColRef = (db, uid) => collection(db, "users", uid, "properties");
 export const propertyDocRef   = (db, uid, id) => doc(db, "users", uid, "properties", id);
 
 // ── CRUD ───────────────────────────────────────────────────────────────────
 
-export const saveDeal         = (db, uid, deal)     => setDoc(dealDocRef(db, uid, deal.id), deal);
+export const saveDeal = (db, uid, deal) => {
+  const sz = checkDocSize(deal);
+  if (sz.block) throw new Error(`Deal document too large (${Math.round(sz.bytes / 1024)} KB ≥ ${Math.round(BLOCK_BYTES / 1024)} KB limit). Reduce comparables or refurb items before saving.`);
+  if (sz.warn) console.warn(`[DealsDash] Deal "${deal.name}" is large (${Math.round(sz.bytes / 1024)} KB). Consider trimming comparables before it approaches the ${Math.round(BLOCK_BYTES / 1024)} KB limit.`);
+  return setDoc(dealDocRef(db, uid, deal.id), deal);
+};
 export const deleteDeal       = (db, uid, id)       => deleteDoc(dealDocRef(db, uid, id));
 
 export const saveLead         = (db, uid, lead)     => setDoc(leadDocRef(db, uid, lead.id), lead);
@@ -36,6 +46,9 @@ export const deleteLedgerEntry = (db, uid, id)      => deleteDoc(ledgerDocRef(db
 
 export const saveContact      = (db, uid, contact)  => setDoc(contactDocRef(db, uid, contact.id), contact);
 export const deleteContact    = (db, uid, id)       => deleteDoc(contactDocRef(db, uid, id));
+
+export const saveAgent        = (db, uid, agent)    => setDoc(agentDocRef(db, uid, agent.id), agent);
+export const deleteAgent      = (db, uid, id)       => deleteDoc(agentDocRef(db, uid, id));
 
 export const saveProperty     = (db, uid, property) => setDoc(propertyDocRef(db, uid, property.id), property);
 export const deleteProperty   = (db, uid, id)       => deleteDoc(propertyDocRef(db, uid, id));

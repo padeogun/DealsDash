@@ -10,12 +10,16 @@ dist/
 .env.local
 .env.*.local
 
+# Firestore backups — never commit (may contain personal data)
+backups/
+
 # Development session artifacts
 *.diff
 tree.txt
 update-dealsdash.bat
 APP_JSX_EDITS.md
 UPDATE_STEPS.md
+.screener-cache/
 
 # OS / editor
 .DS_Store

@@ -1,3 +1,4 @@
+// Runtime: Node.js 22
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const crypto = require("crypto");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -116,17 +117,19 @@ const REPORT_LEADS_TOOL = {
         items: {
           type: "object",
           properties: {
-            address: { type: "string", description: "As specific as found" },
-            postcode: { type: "string", description: "Full or partial postcode if found, else empty string" },
+            address: { type: "string", description: "Full street address including house number/name and street name (e.g. '14 Oak Street, Rochdale' or 'Flat 3, 27 High Street, Manchester'). NEVER return just a town, area, or postcode. Visit the actual listing page — auction house lot detail or portal listing — to find the specific address; search snippets often omit it. If only a partial address is visible on the page, include what was found and note the gap in riskNotes." },
+            postcode: { type: "string", description: "Full postcode if shown on the listing page (e.g. OL11 2AB), partial outcode if that's all that's available, else empty string" },
             propertyType: { type: "string", enum: ["Terrace", "Semi", "Detached", "Flat"] },
+            bedrooms: { type: "number", description: "Number of bedrooms as stated on the listing. 0 if not stated." },
+            availabilityConfirmed: { type: "boolean", description: "Set true ONLY if you navigated to the actual listing page (auction house lot detail page or portal listing page — not a search snippet or cached result) and the page itself showed the property as currently available for sale or auction. Set false if you did not visit the page, the page was inaccessible, or the page showed 'Sold', 'Sold STC', 'Under Offer', 'Sale Agreed', 'Withdrawn', 'No longer available', or any similar off-market language." },
             source: { type: "string", description: "Site or auction house name" },
-            sourceUrl: { type: "string", description: "The real URL found" },
+            sourceUrl: { type: "string", description: "The real URL of the listing page you visited" },
             guidePrice: { type: "number", description: "0 if unknown" },
             auctionDate: { type: "string", description: "YYYY-MM-DD, empty string if not applicable" },
             estRefurb: { type: "number", description: "Rough estimate, 0 if unknown" },
             estResaleLow: { type: "number", description: "0 if unknown" },
             estResaleHigh: { type: "number", description: "0 if unknown" },
-            riskNotes: { type: "string", description: "Brief, specific, mention any uncertainty here" },
+            riskNotes: { type: "string", description: "Brief, specific, mention any uncertainty here — include if address is partial, if availability could not be confirmed from the listing page, or if the listing appeared recently reduced or re-listed" },
             comparables: {
               type: "array",
               maxItems: 10,
@@ -155,7 +158,7 @@ const REPORT_LEADS_TOOL = {
               },
             },
           },
-          required: ["address", "propertyType", "source", "sourceUrl", "guidePrice", "riskNotes", "comparables"],
+          required: ["address", "postcode", "propertyType", "bedrooms", "availabilityConfirmed", "source", "sourceUrl", "guidePrice", "riskNotes", "comparables"],
         },
       },
     },
@@ -289,12 +292,18 @@ function applyGateAndFinalize(leads, profile, writeRejected) {
     const result = gateFailsQ1to3 ? "fail" : Object.values(triage).some((v) => v === null) ? "incomplete" : "pass";
     const failReason = gateFailsQ1to3 ? (gate.reasons[0] || "Failed strategy triage") : null;
 
+    const availabilityWarning = lead.availabilityConfirmed !== true
+      ? "⚠ Availability not confirmed from listing page — verify this property is still on the market before acting on it."
+      : "";
+    const mergedRiskNotes = [availabilityWarning, lead.riskNotes].filter(Boolean).join(" ");
+
     return {
       ...lead,
       sellerType: lead.sellerType || "unknown",
       signals: Array.isArray(lead.signals) ? lead.signals : [],
       triage: { ...triage, result, failReason, scoredAt: Date.now(), scoredBy: gateFailsQ1to3 ? "gate" : "ai" },
       status: gateFailsQ1to3 ? "rejected" : "new",
+      riskNotes: mergedRiskNotes,
     };
   });
 
@@ -364,12 +373,14 @@ function buildResearchPromptFromBrief(brief, strategyProfile) {
     "",
     "Rules:",
     "- Only report properties you found genuine evidence for via search. Never invent a plausible-sounding address, price, or listing — if a town or constraint genuinely has no real matches, simply don't include a lead for it.",
-    `- CRITICAL: if reporting an auction lead, the auction date MUST be on or after ${todayIso}. Web search often surfaces pages for auctions that have already happened — check the date on the actual listing page before including it. If an auction you found has already passed, do not report it as an auction lead: either leave it out entirely, or if there's clear evidence the property is still on the market some other way (e.g. it didn't sell and is now listed for private sale), report it with acquisition type Sale and no auction date instead.`,
-    "- CRITICAL: before including any lead, check the actual listing page (not just the search snippet) for status language like \"Sold\", \"Sold STC\", \"Sale Agreed\", \"Under Offer\", \"Withdrawn\", or \"No longer available\". Search result snippets are often cached and out of date even when the live page has moved on — if the page itself shows any of that language, do not report it as an available lead. This is the single most common way a stale result slips through, so treat it as a hard requirement, not a nice-to-have.",
+    "- VISIT THE LISTING PAGE for every lead before reporting it. For each candidate found in search results, navigate to the actual listing page (the auction house lot detail page, Rightmove/Zoopla/OnTheMarket property page, etc.) — not just the search snippet — to confirm: (a) the full street address including house number/name and street name, and (b) that the property is still actively listed. Search snippets are frequently cached and can misrepresent current status. Set availabilityConfirmed to true only after doing this and seeing an active, on-market listing.",
+    `- CRITICAL — AUCTION DATES: if reporting an auction lead, the auction date MUST be on or after ${todayIso}. Web search often surfaces pages for auctions that have already happened — check the date on the actual listing page before including it. If an auction you found has already passed, either leave it out entirely, or if there's clear evidence the property is still on the market (e.g. it didn't sell and is now listed for private sale), report it with no auction date instead.`,
+    "- CRITICAL — AVAILABILITY: set availabilityConfirmed to true for a lead ONLY after visiting the listing page and confirming the property is currently on the market. If the page shows 'Sold', 'Sold STC', 'Sale Agreed', 'Under Offer', 'Withdrawn', 'No longer available', 'This listing has been removed', or the page returns 404/redirect — do NOT report that lead. Properties sold or under offer are useless to this investor. This is the most common source of bad results, so treat it as a hard requirement.",
+    "- FULL ADDRESS REQUIRED: the address field must include at minimum the house number/name and street name. Do not return just a postcode, town, area description, or property type (e.g. '3-bed terrace, Rochdale' is not acceptable — '14 Oak Street, Rochdale' is). If you can only find a partial address, include what you found and note the gap in riskNotes.",
     "- Prefer auction lots, probate sales, and below-market listings over standard estate agent listings where the acquisition type allows, since those suit a flip/BRR strategy better.",
-    "- For each lead, include the real source URL you found it at.",
+    "- For each lead, include the real source URL of the listing page you visited.",
     "- Leave a numeric field as 0 and explain in riskNotes if you couldn't determine it confidently — do not estimate a plausible-sounding number to fill the field.",
-    "- Find at most 6 leads total across all towns, picking the strongest matches if there are more.",
+    "- Find at most 6 leads total across all towns, picking the strongest matches if there are more. Quality over quantity — 2 confirmed leads with full addresses beat 6 unverified ones.",
     "- Once you've finished searching, call report_leads exactly once with your findings. That is the only way to report results — do not describe your findings in plain text instead of calling it.",
   ].filter(Boolean);
 
@@ -422,6 +433,8 @@ function sanitizeLeads(leads) {
     address: String((l && l.address) || ""),
     postcode: String((l && l.postcode) || ""),
     propertyType: ["Terrace", "Semi", "Detached", "Flat"].includes(l && l.propertyType) ? l.propertyType : "Terrace",
+    bedrooms: Number(l && l.bedrooms) || 0,
+    availabilityConfirmed: (l && l.availabilityConfirmed === true),
     source: String((l && l.source) || "AI research pass"),
     sourceUrl: String((l && l.sourceUrl) || ""),
     guidePrice: Number(l && l.guidePrice) || 0,
@@ -927,7 +940,7 @@ exports.checkEpcRegister = onCall({ secrets: [EPC_API_KEY], cors: true, timeoutS
 
   let res;
   try {
-    res = await fetch(`${EPC_API_URL}?postcode=${encodeURIComponent(postcode.trim())}`, {
+    res = await fetch(`${EPC_API_URL}?postcode=${encodeURIComponent(postcode.trim().replace(/\s+/g, ""))}`, {
       headers: { Authorization: `Bearer ${EPC_API_KEY.value()}`, Accept: "application/json" },
     });
   } catch (e) {

@@ -100,6 +100,12 @@ export default function SurveyModule({ deal, rates: ratesProp, maxBid, onChange,
         {(tab === "external" || tab === "internal") && (
           <section>
             <div className="vx-row vx-row--between"><H2>{tab === "external" ? "External walkthrough" : "Internal walkthrough"}</H2>{priced.unconfirmed > 0 && <Button variant="ghost" size="sm" onClick={() => confirmAll(tab)}>Confirm all pre-filled</Button>}</div>
+            {survey.strategy === "brrr" && (
+              <label className="flex items-center gap-2 text-sm cursor-pointer mb-2">
+                <input type="checkbox" checked={!!survey.brrrSpec} onChange={(e) => update({ brrrSpec: e.target.checked })} className="w-4 h-4" />
+                BRRR spec mode — flag items exceeding rental finish
+              </label>
+            )}
             {CHECKLIST.filter((s) => s.zone === tab).map((sec) => (
               <div key={sec.title}>
                 <H3>{sec.title}</H3>
@@ -117,8 +123,17 @@ export default function SurveyModule({ deal, rates: ratesProp, maxBid, onChange,
                         <Grid style={{ marginTop: 8 }}>
                           {act.qtyLabel && <NumberField label={act.qtyLabel} value={a.qty ?? ""} onChange={(v) => setAns(it.id, { qty: v })} />}
                           <NumberField label={`Quote £ (benchmark ${fmt(line?.calc)})`} value={a.override ?? ""} onChange={(v) => setAns(it.id, { override: v })} />
+                          <NumberField label="Expected value uplift £ (optional)" value={a.uplift ?? ""} onChange={(v) => setAns(it.id, { uplift: v === "" ? null : +v })} />
                           <Field label="Note"><input className="vx-input" value={a.note || ""} onChange={(e) => setAns(it.id, { note: e.target.value })} /></Field>
                         </Grid>
+                      )}
+                      {act.id !== "none" && a.uplift != null && line?.cost > 0 && (
+                        <Note tone={a.uplift / line.cost < 3 ? "caution" : "positive"}>
+                          Value-add ratio: {(a.uplift / line.cost).toFixed(1)}× ({a.uplift / line.cost < 3 ? "Below £1→£3 rule of thumb — Illustrative" : "Meets £1→£3 rule of thumb — Illustrative"})
+                        </Note>
+                      )}
+                      {survey.brrrSpec && act.brrrWarn && (
+                        <Note tone="caution">Rental spec: tenants won't pay for this — consider standard finish instead.</Note>
                       )}
                       {regText && regText !== "—" && <Note>{survey.strategy === "flip" ? "Resale: " : "Rental: "}{regText}</Note>}
                     </Item>

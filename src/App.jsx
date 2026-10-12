@@ -9,7 +9,7 @@ import {
   RotateCcw, Info, MapPin, LogOut, Sparkles, Radar, ExternalLink, RefreshCw,
   ArrowRightCircle, ShieldCheck, Users, Phone, Mail, Star, KeyRound, FileWarning,
   Banknote, Calendar, ClipboardCheck, FileText, Upload, BookMarked, RefreshCcw, CreditCard,
-  GripVertical, Layers, ChevronRight, FileDown, Bell, Map, BookOpen,
+  GripVertical, Layers, ChevronRight, FileDown, Bell, Map, BookOpen, Settings2,
 } from "lucide-react";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SOURCING_STAGES, TERMINAL_STAGES, STAGE_COLORS, LEAD_STATUS_TO_STAGE, GATED_STAGES } from "./lib/pipeline.js";
@@ -33,9 +33,14 @@ import SurveyModule from "./modules/survey/SurveyModule.jsx";
 import { defaultRates } from "./modules/survey/data/rates.js";
 import { mergeRefurbItems } from "./modules/survey/lib/applyToDeal.js";
 import { Badge as VxBadge } from "./components/Badge.jsx";
+import { emptyV2Block, DEFAULT_APPRAISAL_SETTINGS } from "./lib/migrations/v2.js";
 import WorkspaceView from "./components/WorkspaceView.jsx";
 import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
+import AppraisalV2Tab from "./components/AppraisalV2Tab.jsx";
+import AuctionAssessmentV2 from "./components/AuctionAssessmentV2.jsx";
+import { recycling, capitalCost } from "./lib/appraisal/capital.js";
+import { calcFunnelMonth, calcFunnelRolling, sortStandingOffers, calcPaceIndicator, isFollowUpDue } from "./lib/appraisal/funnel.js";
 
 /* =================================================================================
    FIREBASE — Google Sign-In gated to one account, Firestore for cross-device sync
@@ -464,7 +469,7 @@ const NOTIFICATION_DEFAULTS = {
     lenderReportDue: false,
   },
 };
-const DEFAULT_SETTINGS = { monthlyBurn: 1800, targetMonthlyIncome: 30000, planning: { avgCashPerDeal: 30000, avgDurationMonths: 7, avgNetProfitPerDeal: 20000, maxConcurrentDeals: 3 }, surveyRates: null, lenderFundSize: 50000, lenderFundRatePct: 0.08, notifications: NOTIFICATION_DEFAULTS };
+const DEFAULT_SETTINGS = { monthlyBurn: 1800, targetMonthlyIncome: 30000, planning: { avgCashPerDeal: 30000, avgDurationMonths: 7, avgNetProfitPerDeal: 20000, maxConcurrentDeals: 3 }, surveyRates: null, lenderFundSize: 50000, lenderFundRatePct: 0.08, notifications: NOTIFICATION_DEFAULTS, appraisal: { viewingTargetPerMonth: 20 } };
 
 function newDeal() {
   return {
@@ -491,6 +496,7 @@ function newDeal() {
     listingType: "other", // "auction" | "agent" | "d2v" | "trader" | "other" — carried from the lead; the viewing survey reads it
     survey: null,         // viewing survey state (src/modules/survey) — lives on the deal, single-document model
     surveyApplied: null,  // { at, total, lines, unconfirmed, needsEpc } — stamped by "Apply to deal"
+    v2: emptyV2Block(),   // appraisal v2 fields — all costs null until user enters them (RULE 7)
   };
 }
 
@@ -840,6 +846,7 @@ function Sidebar({ tab, setTab, onNav, isDesktop, user, notifUnreadCount = 0 }) 
     { id: "properties",     label: "Properties",        icon: KeyRound },
     { id: "screener",       label: "Area Screener",     icon: Radar },
     { id: "notifications",  label: "Notifications",     icon: Bell },
+    { id: "settings",       label: "Settings",          icon: Settings2 },
     { id: "guide",          label: "User Guide",        icon: BookOpen },
   ];
   return (
@@ -1393,7 +1400,7 @@ function FundingPlannerView({ deal, onChange, settings, defaultBuyBox }) {
   );
 }
 
-const DEAL_TABS = ["Property & comps", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief"];
+const DEAL_TABS = ["Property & comps", "Appraisal v2", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief"];
 
 function _DealHeadlineStrip({ deal, base, verdict, defaultBuyBox }) {
   const isBrrr = deal.fundingMode === "mortgage";
@@ -2018,7 +2025,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
 
       {subTab === "Risk" && (
         <>
-          <AreaIntelligencePanel postcode={deal.postcode} cached={deal.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={deal.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={deal.propertyType} />
+          <AreaIntelligencePanel postcode={deal.postcode} cached={deal.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={deal.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={deal.propertyType} construction={deal.construction} onConstructionChange={(r) => onChange({ construction: r })} />
           <Card className="space-y-3">
             <SectionTitle>Area risk scoring</SectionTitle>
             <div className="space-y-2">
@@ -2117,6 +2124,10 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
 
       {subTab === "Decision Brief" && (
         <DecisionBriefView deal={deal} defaultBuyBox={defaultBuyBox} ownerUid={ownerUid} />
+      )}
+
+      {subTab === "Appraisal v2" && (
+        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} v1Appraisal={base} />
       )}
 
       <Card>
@@ -2560,6 +2571,61 @@ function AiReviewPanel({ deal, metrics }) {
   );
 }
 
+/* =================================================================================
+   SETTINGS VIEW
+   ================================================================================= */
+
+function SettingsView({ settings, onSettingsChange }) {
+  const appr = settings?.appraisal || DEFAULT_APPRAISAL_SETTINGS;
+  function setAppr(patch) {
+    onSettingsChange({ ...settings, appraisal: { ...appr, ...patch } });
+  }
+  function setReserves(patch) {
+    setAppr({ reserves: { ...(appr.reserves || {}), ...patch } });
+  }
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="font-serif text-2xl font-semibold text-vx-text">Settings</h1>
+        <p className="text-sm text-vx-muted mt-1">Global defaults for appraisal calculations. All values tagged Illustrative — verify against your lender terms before bidding. Each can be overridden per-deal in the Appraisal v2 tab.</p>
+      </div>
+
+      <Card>
+        <SectionTitle icon={SlidersHorizontal}>Appraisal defaults</SectionTitle>
+        <div className="grid md:grid-cols-2 gap-3 mt-2">
+          <PctField label="Flip profit target %" value={appr.profitPctDefault} onChange={(v) => setAppr({ profitPctDefault: v })} step={0.5} />
+          <NumField label="BRRR: accepted cash left in (£)" value={appr.acceptedLeftInDefault} onChange={(v) => setAppr({ acceptedLeftInDefault: v })} />
+          <NumField label="ICR threshold (ratio, e.g. 1.25)" value={appr.icr} onChange={(v) => setAppr({ icr: v })} step={0.05} />
+          <PctField label="ICR stress rate %" value={appr.icrStressRate} onChange={(v) => setAppr({ icrStressRate: v })} step={0.1} />
+          <NumField label="Min net monthly cash flow (£)" value={appr.minNetMonthly} onChange={(v) => setAppr({ minNetMonthly: v })} />
+          <PctField label="Min break-even headroom %" value={appr.minHeadroomPct} onChange={(v) => setAppr({ minHeadroomPct: v })} step={0.5} />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Rental reserves (% of monthly rent)</SectionTitle>
+        <div className="grid md:grid-cols-3 gap-3 mt-2">
+          <PctField label="Void allowance %" value={appr.reserves?.voids} onChange={(v) => setReserves({ voids: v })} />
+          <PctField label="Management fee %" value={appr.reserves?.mgmt} onChange={(v) => setReserves({ mgmt: v })} />
+          <PctField label="Maintenance %" value={appr.reserves?.maint} onChange={(v) => setReserves({ maint: v })} />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Sourcing</SectionTitle>
+        <div className="max-w-xs mt-2">
+          <NumField label="Monthly viewing target" value={appr.viewingTargetPerMonth ?? 20} onChange={(v) => setAppr({ viewingTargetPerMonth: v })} />
+        </div>
+      </Card>
+
+      <div className="text-xs text-vx-muted border border-vx-divider rounded p-3 space-y-1">
+        <p><strong>Monthly burn rate &amp; revolving fund</strong> — in <strong>Capital &amp; cash</strong>.</p>
+        <p><strong>Strategy profile, buy boxes &amp; per-deal assumption overrides</strong> — in <strong>Playbooks</strong>.</p>
+      </div>
+    </div>
+  );
+}
+
 function CapitalCashFlowView({ ledger, setLedger, settings, setSettings, deals, onResetAll }) {
   const [form, setForm] = useState({ date: "", source: "", amount: 0, direction: "in" });
   const summary = useMemo(() => portfolioSummary(deals, ledger, settings), [deals, ledger, settings]);
@@ -2957,7 +3023,133 @@ function BusinessPlannerView({ settings, setSettings, deals, ledger }) {
         <BusinessSimChart timeline={result.timeline} target={p.targetMonthlyIncome} />
         <p className="text-xs text-vx-muted mt-2">Trailing 12-month profit ÷ 12, recomputed each month as deals complete and capital recycles into new projects, capped at your concurrency limit.</p>
       </Card>
+
+      {/* ── Private capital pool tracker (P04) ─────────────────────────── */}
+      <PrivateCapitalTracker deals={deals} settings={settings} setSettings={setSettings} />
     </div>
+  );
+}
+
+/** P04 — private capital pool recycling tracker. Shows deployed/idle per deal, turns, overruns. */
+function PrivateCapitalTracker({ deals, settings, setSettings }) {
+  const poolCfg = useMemo(() => ({
+    pool:                  Number(settings?.lenderFundSize)         || 50000,
+    ratePct:               Number(settings?.lenderFundRatePct)      || 0.08,
+    termMonths:            Number(settings?.capitalTermMonths)       || 12,
+    extensionCapMonths:    Number(settings?.capitalExtensionMonths)  || 3,
+  }), [settings]);
+
+  // Build allocation list from deals with v2.capitalAllocated set
+  const allocations = useMemo(() =>
+    (deals || [])
+      .filter(d => d.v2?.capitalAllocated > 0)
+      .map(d => ({
+        id:           d.id,
+        dealName:     d.name || d.address || d.id,
+        allocated:    Number(d.v2.capitalAllocated),
+        deployedAt:   d.v2.capitalDeployedAt   || null,
+        expectedReturn: d.v2.capitalExpectedReturnAt || null,
+        returnedAt:   d.v2.capitalReturnedAt   || null,
+      })),
+  [deals]);
+
+  const recycleResult = useMemo(() =>
+    recycling(poolCfg.pool, allocations.map(a => ({
+      id: a.id, allocated: a.allocated,
+      deployedAt: a.deployedAt, returnedAt: a.returnedAt,
+    })), { termMonths: poolCfg.termMonths, extensionMonths: poolCfg.extensionCapMonths }),
+  [poolCfg, allocations]);
+
+  // Cumulative interest across active allocations (deployed, not yet returned)
+  const accruedInterest = useMemo(() => {
+    const now = Date.now();
+    return allocations
+      .filter(a => a.deployedAt && !a.returnedAt)
+      .reduce((sum, a) => {
+        const ms = now - new Date(a.deployedAt).getTime();
+        const months = ms / (1000 * 60 * 60 * 24 * 30.4375);
+        return sum + capitalCost(a.allocated, months, poolCfg.ratePct).cost;
+      }, 0);
+  }, [allocations, poolCfg.ratePct]);
+
+  return (
+    <Card>
+      <SectionTitle>Private capital pool</SectionTitle>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <KPI label="Pool size" value={fmtGBP(poolCfg.pool)} />
+        <KPI label="Deployed" value={fmtGBP(recycleResult.deployed)}
+          tone={recycleResult.deployed > 0 ? "default" : "default"} />
+        <KPI label="Idle" value={fmtGBP(recycleResult.idle)}
+          tone={recycleResult.idle >= 0 ? "good" : "bad"} />
+        <KPI label="Turns / year" value={recycleResult.turnsPerYear > 0 ? recycleResult.turnsPerYear.toFixed(1) + "×" : "—"}
+          tone={recycleResult.turnsPerYear >= 2 ? "good" : "default"} />
+      </div>
+
+      {recycleResult.overrunCount > 0 && (
+        <div className="mb-3 flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">
+          ⚠ {recycleResult.overrunCount} allocation{recycleResult.overrunCount !== 1 ? "s" : ""} overrun the {poolCfg.termMonths + poolCfg.extensionCapMonths}-month limit.
+        </div>
+      )}
+
+      {accruedInterest > 0 && (
+        <p className="text-xs text-vx-muted mb-3">
+          Cumulative interest accrued on active allocations: <strong className="font-mono">{fmtGBP(round2(accruedInterest))}</strong>
+          {" "}at {(poolCfg.ratePct * 100).toFixed(1)}% p.a. simple. <span className="italic">Illustrative — verify with fund manager.</span>
+        </p>
+      )}
+
+      {allocations.length === 0 ? (
+        <p className="text-xs text-vx-muted">No capital allocated to deals yet. Add allocations via the &ldquo;Appraisal v2&rdquo; tab on each deal.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-vx-muted border-b border-vx-divider">
+                <th className="text-left py-1 pr-3 font-medium">Deal</th>
+                <th className="text-right py-1 pr-3 font-medium">Allocated</th>
+                <th className="text-right py-1 pr-3 font-medium">Deployed</th>
+                <th className="text-right py-1 pr-3 font-medium">Expected return</th>
+                <th className="text-right py-1 pr-3 font-medium">Interest cost</th>
+                <th className="text-right py-1 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allocations.map(a => {
+                const now = Date.now();
+                const deployedMs = a.deployedAt ? now - new Date(a.deployedAt).getTime() : 0;
+                const monthsHeld = deployedMs / (1000 * 60 * 60 * 24 * 30.4375);
+                const interest = a.deployedAt
+                  ? capitalCost(a.allocated, monthsHeld, poolCfg.ratePct).cost
+                  : 0;
+                const isOverrun = !a.returnedAt && monthsHeld > poolCfg.termMonths + poolCfg.extensionCapMonths;
+                const isExpired = !a.returnedAt && a.expectedReturn && new Date(a.expectedReturn) < new Date();
+                const status    = a.returnedAt ? "returned" : isOverrun ? "overrun" : isExpired ? "overdue" : "active";
+                const statusColour = { returned: "text-vx-positive", overrun: "text-vx-negative", overdue: "text-vx-caution", active: "text-vx-muted" }[status];
+                return (
+                  <tr key={a.id} className="border-b border-vx-divider last:border-0">
+                    <td className="py-1.5 pr-3 font-medium text-vx-text truncate max-w-[160px]">{a.dealName}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono tabular-nums">{fmtGBP(a.allocated)}</td>
+                    <td className="py-1.5 pr-3 text-right">{a.deployedAt || "—"}</td>
+                    <td className="py-1.5 pr-3 text-right">{a.expectedReturn || "—"}</td>
+                    <td className="py-1.5 pr-3 text-right font-mono tabular-nums">{fmtGBP(round2(interest))}</td>
+                    <td className={`py-1.5 text-right font-medium capitalize ${statusColour}`}>{status}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <NumField label="Pool size (£)" value={settings.lenderFundSize ?? 50000}
+          onChange={(v) => setSettings({ ...settings, lenderFundSize: v })} testId="lender-fund-size" />
+        <PctField label="Annual rate %" value={settings.lenderFundRatePct ?? 0.08}
+          onChange={(v) => setSettings({ ...settings, lenderFundRatePct: v })} step={0.5} testId="lender-fund-rate" />
+      </div>
+      <p className="text-xs text-vx-muted mt-2 italic">Projection — illustrative, depends on deal exits.</p>
+    </Card>
   );
 }
 
@@ -3354,7 +3546,10 @@ function newLead() {
     triage: newTriage(),
     areaIntelligence: null,
     epcCheck: null,
+    construction: null, // P06: { confirmedType, frontage, notes, streetConstructionMix, streetFrontageMix, streetGoodAvoidEnd, streetNotes }
+    viewings: [],       // P07: [{ id, date, type, agentId, offerMade, offerAmount, outcome, followUpDate, notes }]
     pipelineStage: "Watching",
+    auctionV2: null,
   };
 }
 
@@ -3691,7 +3886,7 @@ function _AreaIntelMomentumSection({ postcode, cached, marketStats, propertyType
   );
 }
 
-function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcChange, marketStats, propertyType }) {
+function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcChange, marketStats, propertyType, construction, onConstructionChange }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [epcLoading, setEpcLoading] = useState(false);
@@ -3815,9 +4010,85 @@ function AreaIntelligencePanel({ postcode, cached, onChange, epcCached, onEpcCha
               </ul>
             )}
             <div className="text-vx-muted mt-1">Checked {new Date(epcCached.checkedAt).toLocaleString("en-GB")} for {epcCached.postcode} — most recent certificate per property shown{epcCached.totalCertificatesFound > epcCached.properties.length ? ` (${epcCached.totalCertificatesFound} total certificates on record, including history)` : ""}.</div>
+            {/* EPC search returns band + date only — walls/construction data requires the individual certificate endpoint */}
+            <p className="text-xs text-vx-muted mt-1.5">Construction type is not available in the EPC postcode search. Confirm in person using the section below.</p>
           </div>
         )}
       </div>
+
+      {/* Manual construction confirmation — P06 */}
+      {onConstructionChange && (
+        <div className="pt-2 border-t border-vx-divider">
+          <div className="font-medium text-vx-text text-xs mb-1">Construction — manual confirmation</div>
+          <p className="text-xs text-vx-muted mb-2">Confirm after viewing. Lenders and insurers treat non-standard construction differently — affects mortgage availability and refurb scope.</p>
+          <div className="grid md:grid-cols-2 gap-2 mb-2">
+            <div>
+              <label className="block text-xs text-vx-muted mb-0.5">Construction type confirmed</label>
+              <select
+                value={(construction || {}).confirmedType || ""}
+                onChange={(e) => onConstructionChange({ ...(construction || {}), confirmedType: e.target.value })}
+                className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+              >
+                <option value="">Not assessed</option>
+                <option value="standard">Standard (brick / stone)</option>
+                <option value="non-standard">Non-standard</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-vx-muted mb-0.5">Frontage description</label>
+              <input
+                type="text"
+                placeholder="e.g. Pebbledash, painted brick, render…"
+                value={(construction || {}).frontage || ""}
+                onChange={(e) => onConstructionChange({ ...(construction || {}), frontage: e.target.value })}
+                className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+              />
+            </div>
+          </div>
+          {(construction || {}).confirmedType === "non-standard" && (
+            <div className="flex items-start gap-1.5 text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded px-2 py-1.5 mb-2">
+              <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
+              <span><span className="font-semibold">Non-standard confirmed.</span> Check mortgage lender criteria, specialist insurer, and whether refurb scope changes. Flag to solicitor.</span>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs text-vx-muted mb-0.5">Notes</label>
+            <textarea
+              rows={2}
+              placeholder="Any additional observations…"
+              value={(construction || {}).notes || ""}
+              onChange={(e) => onConstructionChange({ ...(construction || {}), notes: e.target.value })}
+              className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Street notes — P06 */}
+      {onConstructionChange && (
+        <div className="pt-2 border-t border-vx-divider">
+          <div className="font-medium text-vx-text text-xs mb-1">Street notes</div>
+          <p className="text-xs text-vx-muted mb-1.5">Light observations for the street / postcode sector — useful for future deals in the same area.</p>
+          <div className="space-y-1.5">
+            {[
+              ["streetConstructionMix", "Construction mix on street"],
+              ["streetFrontageMix", "Frontage mix"],
+              ["streetGoodAvoidEnd", "Good / avoid which end?"],
+              ["streetNotes", "Other street notes"],
+            ].map(([field, label]) => (
+              <div key={field}>
+                <label className="block text-xs text-vx-muted mb-0.5">{label}</label>
+                <input
+                  type="text"
+                  value={(construction || {})[field] || ""}
+                  onChange={(e) => onConstructionChange({ ...(construction || {}), [field]: e.target.value })}
+                  className="w-full text-xs border border-vx-border rounded px-2 py-1 bg-vx-bg outline-none focus:ring-2 focus:ring-vx-accent"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -4077,7 +4348,248 @@ function PipelineKanban({ leads, onMoveLead, openLeadId, onOpenLead, onPromote, 
   );
 }
 
-function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, marketStats, targetAreas = [], onClearTargetAreas }) {
+/* ─── FunnelView ──────────────────────────────────────────────────── P07 ─── */
+function FunnelView({ leads, settings, onSettingsChange }) {
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const monthly   = calcFunnelMonth(leads, thisMonth);
+  const rolling   = calcFunnelRolling(leads, 3);
+  const pace      = calcPaceIndicator(leads, 3);
+  const standing  = sortStandingOffers(leads);
+
+  const target = Number(settings?.appraisal?.viewingTargetPerMonth) || 20;
+  const [editTarget, setEditTarget] = useState(false);
+  const [targetDraft, setTargetDraft] = useState(String(target));
+  const pct = Math.min(100, Math.round((monthly.viewings / target) * 100));
+
+  function saveTarget() {
+    const n = parseInt(targetDraft, 10);
+    if (n > 0 && onSettingsChange) {
+      onSettingsChange({ ...settings, appraisal: { ...(settings?.appraisal || {}), viewingTargetPerMonth: n } });
+    }
+    setEditTarget(false);
+  }
+
+  function FunnelBar({ label, n, d, rate }) {
+    const pctVal = Math.min(100, Math.round(rate * 100));
+    return (
+      <div className="space-y-1">
+        <div className="flex justify-between text-xs text-vx-muted">
+          <span>{label}</span>
+          <span className="font-mono text-vx-text font-semibold">{n}/{d} ({pctVal}%)</span>
+        </div>
+        <div className="h-1.5 bg-vx-surface rounded-full overflow-hidden">
+          <div className="h-full bg-vx-accent-strong rounded-full" style={{ width: `${pctVal}%` }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-vx-muted">This month's viewings</span>
+          <div className="flex items-center gap-2">
+            {editTarget ? (
+              <>
+                <input type="number" min="1" max="999" value={targetDraft} onChange={(e) => setTargetDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveTarget()}
+                  className="w-16 text-xs border border-vx-border rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-vx-accent" />
+                <button onClick={saveTarget} className="text-xs text-vx-accent font-medium hover:underline">Save</button>
+                <button onClick={() => setEditTarget(false)} className="text-xs text-vx-muted hover:text-vx-text">Cancel</button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-vx-muted">Target: <span className="font-semibold text-vx-text">{target}</span></span>
+                <button onClick={() => { setTargetDraft(String(target)); setEditTarget(true); }} className="text-xs text-vx-accent hover:underline">Edit</button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex items-end gap-3 mb-2">
+          <span className="text-3xl font-mono font-bold text-vx-text">{monthly.viewings}</span>
+          <span className="text-sm text-vx-muted mb-1">of {target} ({pct}%)</span>
+        </div>
+        <div className="h-2.5 bg-vx-surface rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-vx-positive" : pct >= 70 ? "bg-vx-accent-strong" : "bg-vx-caution"}`} style={{ width: `${pct}%` }} />
+        </div>
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">This month</div>
+          <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+            {[["Viewings", monthly.viewings], ["Offers", monthly.offers], ["Accepted", monthly.accepted]].map(([lbl, val]) => (
+              <div key={lbl}>
+                <div className="text-2xl font-mono font-bold text-vx-text">{val}</div>
+                <div className="text-xs text-vx-muted">{lbl}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <FunnelBar label="Offer rate (offers ÷ viewings)" n={monthly.offers} d={monthly.viewings} rate={monthly.offerRate} />
+            <FunnelBar label="Accept rate (accepted ÷ offers)" n={monthly.accepted} d={monthly.offers} rate={monthly.acceptRate} />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">Rolling 3 months</div>
+          <div className="grid grid-cols-3 gap-3 mb-4 text-center">
+            {[["Viewings", rolling.viewings], ["Offers", rolling.offers], ["Accepted", rolling.accepted]].map(([lbl, val]) => (
+              <div key={lbl}>
+                <div className="text-2xl font-mono font-bold text-vx-text">{val}</div>
+                <div className="text-xs text-vx-muted">{lbl}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <FunnelBar label="Offer rate" n={rolling.offers} d={rolling.viewings} rate={rolling.offerRate} />
+            <FunnelBar label="Accept rate" n={rolling.accepted} d={rolling.offers} rate={rolling.acceptRate} />
+          </div>
+          {pace && (
+            <div className="mt-3 pt-3 border-t border-vx-divider text-xs text-vx-muted">
+              Pace: ~<span className="font-semibold text-vx-text">{pace.perYear}</span> deal{pace.perYear !== 1 ? "s" : ""}/year at current rate
+              <span className="ml-1 text-vx-muted/70">— Illustrative only</span>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {standing.length > 0 && (
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">Standing offers ({standing.length})</div>
+          <div className="space-y-2">
+            {standing.map(({ lead, viewing }, idx) => {
+              const due = isFollowUpDue(viewing);
+              return (
+                <div key={viewing.id || idx} className={`flex items-center justify-between gap-3 rounded p-2 text-sm ${due ? "bg-amber-50 border border-amber-200" : "bg-vx-surface"}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-vx-text truncate">{lead.address || "Untitled lead"}</div>
+                    {viewing.offerAmount ? <div className="text-xs text-vx-muted">Offer: {fmtGBP(viewing.offerAmount)}</div> : null}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    {viewing.followUpDate
+                      ? <div className={`text-xs font-medium ${due ? "text-vx-caution" : "text-vx-muted"}`}>{due ? "Follow-up due " : "Follow-up "}{viewing.followUpDate}</div>
+                      : <div className="text-xs text-vx-muted">No follow-up date</div>}
+                    {viewing.notes && <div className="text-xs text-vx-muted truncate max-w-[180px]">{viewing.notes}</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {standing.length === 0 && <div className="text-center py-4 text-vx-muted text-sm">No standing offers right now.</div>}
+    </div>
+  );
+}
+
+/* ─── AgentsView ──────────────────────────────────────────────────── P07 ─── */
+function AgentsView({ leads, agents, setAgents }) {
+  const [form, setForm] = useState(null);
+
+  function agentStats(agentId) {
+    let viewings = 0, offers = 0, accepted = 0, lastDate = null;
+    for (const lead of leads) {
+      for (const v of (lead.viewings || [])) {
+        if (v.agentId !== agentId) continue;
+        viewings++;
+        if (v.offerMade) offers++;
+        if (v.outcome === "accepted") accepted++;
+        if (v.date && (!lastDate || v.date > lastDate)) lastDate = v.date;
+      }
+    }
+    const daysSince = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : null;
+    return { viewings, offers, accepted, lastDate, daysSince };
+  }
+
+  function saveForm() {
+    if (!form?.name?.trim()) return;
+    const isNew = !form.id;
+    const agent = isNew ? { ...form, id: uid(), createdAt: Date.now() } : { ...form };
+    setAgents(isNew ? [...agents, agent] : agents.map((a) => (a.id === agent.id ? agent : a)));
+    setForm(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-vx-muted">{agents.length} agent{agents.length !== 1 ? "s" : ""} tracked</span>
+        <button onClick={() => setForm({ name: "", phone: "", email: "", area: "", notes: "" })} className="flex items-center gap-1 text-xs font-medium bg-navy text-white px-2.5 py-1.5 rounded hover:bg-navy/90">
+          <Plus size={13} />Add agent
+        </button>
+      </div>
+
+      {form !== null && (
+        <Card>
+          <div className="text-xs font-medium text-vx-muted mb-3">{form.id ? "Edit agent" : "New agent"}</div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <TextField label="Name *" value={form.name || ""} onChange={(v) => setForm({ ...form, name: v })} placeholder="e.g. Sarah Jones — Better Buy Properties" />
+            <TextField label="Phone" value={form.phone || ""} onChange={(v) => setForm({ ...form, phone: v })} placeholder="+44 7700 900000" />
+            <TextField label="Email" value={form.email || ""} onChange={(v) => setForm({ ...form, email: v })} placeholder="agent@example.com" />
+            <TextField label="Area / patch" value={form.area || ""} onChange={(v) => setForm({ ...form, area: v })} placeholder="e.g. OL1, OL4, Oldham" />
+            <div className="md:col-span-2">
+              <TextField label="Notes" value={form.notes || ""} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Specialism, relationship, referral source…" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button onClick={saveForm} disabled={!form.name?.trim()} className="text-xs font-medium bg-navy text-white px-3 py-1.5 rounded hover:bg-navy/90 disabled:opacity-40">Save</button>
+            <button onClick={() => setForm(null)} className="text-xs font-medium text-vx-muted hover:text-vx-text px-3 py-1.5">Cancel</button>
+          </div>
+        </Card>
+      )}
+
+      {agents.length === 0 && form === null && (
+        <div className="text-center py-6 text-vx-muted text-sm">No agents yet. Add the estate agents and sourcing contacts who feed you viewings.</div>
+      )}
+
+      <div className="grid gap-3">
+        {agents.map((agent) => {
+          const stats = agentStats(agent.id);
+          const stale = stats.daysSince !== null && stats.daysSince > 30;
+          return (
+            <Card key={agent.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-serif font-semibold text-vx-text">{agent.name}</span>
+                    {stale && <Badge tone="warn">No contact {stats.daysSince}d</Badge>}
+                  </div>
+                  <div className="text-xs text-vx-muted mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                    {agent.phone && <span className="flex items-center gap-1"><Phone size={11} />{agent.phone}</span>}
+                    {agent.email && <span className="flex items-center gap-1"><Mail size={11} />{agent.email}</span>}
+                    {agent.area && <span className="flex items-center gap-1"><MapPin size={11} />{agent.area}</span>}
+                  </div>
+                  {agent.notes && <div className="text-xs text-vx-muted mt-1">{agent.notes}</div>}
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => setForm({ ...agent })} className="text-vx-muted hover:text-vx-text p-1"><Pencil size={14} /></button>
+                  <button onClick={() => setAgents(agents.filter((a) => a.id !== agent.id))} className="text-vx-muted hover:text-vx-negative p-1"><Trash2 size={14} /></button>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-vx-divider flex items-center gap-5">
+                {[["Viewings", stats.viewings], ["Offers", stats.offers], ["Accepted", stats.accepted]].map(([lbl, val]) => (
+                  <div key={lbl} className="text-center">
+                    <div className="font-mono font-bold text-vx-text">{val}</div>
+                    <div className="text-xs text-vx-muted">{lbl}</div>
+                  </div>
+                ))}
+                <div className="ml-auto text-right">
+                  {stats.lastDate
+                    ? <div className={`text-xs ${stale ? "text-vx-caution font-medium" : "text-vx-muted"}`}>Last activity {stats.lastDate} ({stats.daysSince}d ago)</div>
+                    : <div className="text-xs text-vx-muted">No viewings yet</div>}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, marketStats, targetAreas = [], onClearTargetAreas, agents = [], setAgents, settings, onSettingsChange }) {
   const [filter, setFilter] = useState("all");
   const [verifyingId, setVerifyingId] = useState(null);
   const [verifyError, setVerifyError] = useState(null);
@@ -4284,8 +4796,9 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-1 bg-vx-surface-2 border border-vx-divider rounded p-0.5">
-          <button onClick={() => setViewMode("list")} className={`px-3 py-1 text-xs rounded font-medium transition-colors ${viewMode === "list" ? "bg-vx-bg shadow-sm text-vx-text" : "text-vx-muted hover:text-vx-text"}`}>List</button>
-          <button onClick={() => setViewMode("kanban")} className={`px-3 py-1 text-xs rounded font-medium transition-colors ${viewMode === "kanban" ? "bg-vx-bg shadow-sm text-vx-text" : "text-vx-muted hover:text-vx-text"}`}>Kanban</button>
+          {["list", "kanban", "funnel", "agents"].map((m) => (
+            <button key={m} onClick={() => setViewMode(m)} className={`px-3 py-1 text-xs rounded font-medium transition-colors capitalize ${viewMode === m ? "bg-vx-bg shadow-sm text-vx-text" : "text-vx-muted hover:text-vx-text"}`}>{m}</button>
+          ))}
         </div>
         {viewMode === "list" && (
           <div className="flex gap-1.5 flex-wrap">
@@ -4311,7 +4824,7 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
         />
       )}
 
-      {viewMode === "list" ? (
+      {viewMode === "list" && (
         <>
           {visible.length === 0 ? (
             <Card className="text-center py-10 text-vx-muted text-sm">
@@ -4332,12 +4845,15 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
                   stale={isStale(lead)}
                   ownerUid={ownerUid}
                   marketStats={marketStats}
+                  agents={agents}
                 />
               ))}
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {viewMode === "kanban" && (
         <PipelineKanban
           leads={leads}
           onMoveLead={moveLead}
@@ -4351,6 +4867,22 @@ function SourcingView({ leads, setLeads, onPromote, ownerUid, buyBoxFilters, mar
           ownerUid={ownerUid}
           onChange={updateLead}
           marketStats={marketStats}
+        />
+      )}
+
+      {viewMode === "funnel" && (
+        <FunnelView
+          leads={leads}
+          settings={settings}
+          onSettingsChange={onSettingsChange}
+        />
+      )}
+
+      {viewMode === "agents" && (
+        <AgentsView
+          leads={leads}
+          agents={agents}
+          setAgents={setAgents}
         />
       )}
 
@@ -4621,7 +5153,7 @@ function TriageBlock({ lead, onChange }) {
   );
 }
 
-function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, onPromote, stale, ownerUid, marketStats, defaultOpen = false }) {
+function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, onPromote, stale, ownerUid, marketStats, agents = [], defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [statusCheckError, setStatusCheckError] = useState(null);
@@ -4634,6 +5166,16 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
   }
   function addComp() { onChange({ comparables: [...lead.comparables, { label: "", value: "" }] }); }
   function removeComp(idx) { onChange({ comparables: lead.comparables.filter((_, i) => i !== idx) }); }
+
+  function addViewing() {
+    const v = { id: uid(), date: new Date().toISOString().slice(0, 10), type: "in_person", agentId: "", offerMade: false, offerAmount: null, outcome: "none", followUpDate: "", notes: "" };
+    onChange({ viewings: [...(lead.viewings || []), v] });
+  }
+  function setViewing(idx, patch) {
+    const arr = (lead.viewings || []).map((v, i) => i === idx ? { ...v, ...patch } : v);
+    onChange({ viewings: arr });
+  }
+  function removeViewing(idx) { onChange({ viewings: (lead.viewings || []).filter((_, i) => i !== idx) }); }
 
   async function recheckStatus() {
     setCheckingStatus(true);
@@ -4677,6 +5219,7 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
             {stale && lead.status !== "promoted" && lead.status !== "rejected" && <Badge tone="warn">stale</Badge>}
             {listingStatusTone && lead.statusCheck.status !== "still_live" && <Badge tone={listingStatusTone}>{lead.statusCheck.status.replace(/_/g, " ")}</Badge>}
             {lead.areaIntelligence && lead.areaIntelligence.imd && <ImdPill imd={lead.areaIntelligence.imd} />}
+            {lead.construction && lead.construction.confirmedType === "non-standard" && <Badge tone="bad">Non-std construction</Badge>}
           </div>
           <div className="text-xs text-vx-muted mt-1 flex items-center gap-1"><MapPin size={12} />{lead.postcode || "No postcode"} · {lead.propertyType} · {lead.source || "No source"}</div>
           <div className="flex gap-5 mt-2 text-sm font-mono tabular-nums">
@@ -4733,6 +5276,10 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
 
           <TriageBlock lead={lead} onChange={onChange} />
 
+          {lead.listingType === "auction" && (
+            <AuctionAssessmentV2 lead={lead} onChange={onChange} />
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-vx-muted">Listing status</span>
@@ -4751,7 +5298,7 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
             )}
           </div>
 
-          <AreaIntelligencePanel postcode={lead.postcode} cached={lead.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={lead.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={lead.propertyType} />
+          <AreaIntelligencePanel postcode={lead.postcode} cached={lead.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={lead.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={lead.propertyType} construction={lead.construction} onConstructionChange={(r) => onChange({ construction: r })} />
 
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -4772,6 +5319,80 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
               ))}
             </div>
             <button onClick={addComp} className="flex items-center gap-1 text-xs text-vx-accent font-medium hover:underline mt-2"><Plus size={12} />Add comparable manually</button>
+          </div>
+
+          {/* Viewing log — P07 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-vx-muted">Viewings ({(lead.viewings || []).length})</span>
+              <button onClick={addViewing} className="flex items-center gap-1 text-xs font-medium text-vx-accent hover:underline"><Plus size={12} />Log viewing</button>
+            </div>
+            {(lead.viewings || []).length === 0 && (
+              <div className="text-xs text-vx-muted py-2">No viewings logged yet.</div>
+            )}
+            <div className="space-y-3">
+              {(lead.viewings || []).map((v, idx) => {
+                const due = isFollowUpDue(v);
+                return (
+                  <div key={v.id || idx} className={`rounded border p-3 space-y-2 text-sm ${due ? "border-amber-300 bg-amber-50" : "border-vx-border bg-vx-surface"}`}>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Date</label>
+                        <input type="date" value={v.date || ""} onChange={(e) => setViewing(idx, { date: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Type</label>
+                        <select value={v.type || "in_person"} onChange={(e) => setViewing(idx, { type: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg">
+                          <option value="in_person">In person</option>
+                          <option value="virtual">Virtual</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Agent</label>
+                        <select value={v.agentId || ""} onChange={(e) => setViewing(idx, { agentId: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg">
+                          <option value="">— none —</option>
+                          {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-vx-muted mb-0.5">Outcome</label>
+                        <select value={v.outcome || "none"} onChange={(e) => setViewing(idx, { outcome: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg">
+                          <option value="none">No decision</option>
+                          <option value="standing">Standing offer</option>
+                          <option value="accepted">Accepted</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="withdrawn">Withdrawn</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!v.offerMade} onChange={(e) => setViewing(idx, { offerMade: e.target.checked, offerAmount: e.target.checked ? v.offerAmount : null })} className="w-3.5 h-3.5" />
+                        Offer made
+                      </label>
+                      {v.offerMade && (
+                        <div>
+                          <label className="block text-xs text-vx-muted mb-0.5">Offer amount</label>
+                          <input type="number" min="0" step="1000" value={v.offerAmount ?? ""} onChange={(e) => setViewing(idx, { offerAmount: e.target.value === "" ? null : Number(e.target.value) })} placeholder="£" className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                        </div>
+                      )}
+                      {v.outcome === "standing" && (
+                        <div className={v.offerMade ? "md:col-start-3" : "md:col-start-2"}>
+                          <label className="block text-xs text-vx-muted mb-0.5">Follow-up date {due && <span className="text-vx-caution font-semibold">· Due!</span>}</label>
+                          <input type="date" value={v.followUpDate || ""} onChange={(e) => setViewing(idx, { followUpDate: e.target.value })} className="w-full text-xs border border-vx-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                        </div>
+                      )}
+                      <div className="md:col-start-4 flex justify-end">
+                        <button onClick={() => removeViewing(idx)} className="text-vx-muted hover:text-vx-negative p-1"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                    <div>
+                      <input type="text" value={v.notes || ""} onChange={(e) => setViewing(idx, { notes: e.target.value })} placeholder="Notes (outcome detail, vendor reaction, condition flags…)" className="w-full text-xs border border-vx-border rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-vx-accent bg-vx-bg" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <label className="block">
@@ -5423,6 +6044,7 @@ function AppInner({ user }) {
   const [contacts, setContacts] = useState([]);
   const [properties, setProperties] = useState([]);
   const [buyBoxes, setBuyBoxes] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [marketStats, setMarketStats] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -5456,7 +6078,7 @@ function AppInner({ user }) {
     let unsubs = [];
     let cancelled = false;
     let dealsReady = false, leadsReady = false, ledgerReady = false,
-        contactsReady = false, propertiesReady = false,
+        contactsReady = false, propertiesReady = false, agentsReady = false,
         settingsReady = false, plannerReady = false, buyBoxesReady = false;
     let latestSettingsData = null;
     let latestPlannerData = null;
@@ -5472,7 +6094,7 @@ function AppInner({ user }) {
 
     function checkAllReady() {
       if (dealsReady && leadsReady && ledgerReady && contactsReady &&
-          propertiesReady && settingsReady && plannerReady && buyBoxesReady) {
+          propertiesReady && agentsReady && settingsReady && plannerReady && buyBoxesReady) {
         setLoaded(true);
         setMigrateNote(null);
       }
@@ -5540,6 +6162,12 @@ function AppInner({ user }) {
         if (!buyBoxesReady) { buyBoxesReady = true; checkAllReady(); }
       }, errHandler));
 
+      unsubs.push(onSnapshot(repo.agentsColRef(db, user.uid), snap => {
+        if (cancelled) return;
+        setAgents(snap.docs.map(d => d.data()));
+        if (!agentsReady) { agentsReady = true; checkAllReady(); }
+      }, errHandler));
+
       // Market stats — shared collection, not user-scoped; does not gate app load
       unsubs.push(onSnapshot(repo.marketStatsColRef(db), snap => {
         if (cancelled) return;
@@ -5598,6 +6226,14 @@ function AppInner({ user }) {
     prevLeads.filter(l => !currentIds.has(l.id))
       .forEach(l => repo.deleteLead(db, user.uid, l.id).catch(() => setStorageOk(false)));
     setLeads(newLeads);
+  }
+
+  function syncAgents(newAgents, prevAgents) {
+    const currentIds = new Set(newAgents.map(a => a.id));
+    newAgents.forEach(a => repo.saveAgent(db, user.uid, a).catch(() => setStorageOk(false)));
+    prevAgents.filter(a => !currentIds.has(a.id))
+      .forEach(a => repo.deleteAgent(db, user.uid, a.id).catch(() => setStorageOk(false)));
+    setAgents(newAgents);
   }
 
   function syncLedger(newLedger, prevLedger) {
@@ -5734,7 +6370,7 @@ function AppInner({ user }) {
         <main className="flex-1 overflow-x-hidden" style={{ padding: isDesktop ? 24 : 14, overflowY: isDesktop ? "auto" : "visible" }}>
           {!storageOk && <StorageWarning />}
           {tab === "dashboard" && <DashboardView deals={deals} ledger={ledger} properties={properties} settings={settings} thresholds={effectiveThresholds} goToDeals={() => setTab("deals")} goToRisk={() => setTab("risk")} goToProperties={() => setTab("properties")} />}
-          {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} />}
+          {tab === "sourcing" && <SourcingView leads={leads} setLeads={(newLeads) => syncLeads(newLeads, leads)} onPromote={promoteLeadToDeal} ownerUid={user.uid} buyBoxFilters={defaultBuyBox?.filters || null} marketStats={marketStats} targetAreas={targetAreas} onClearTargetAreas={() => setTargetAreas([])} agents={agents} setAgents={(newAgents) => syncAgents(newAgents, agents)} settings={settings} onSettingsChange={applySettings} />}
           {tab === "screener" && <ScreenerView settings={settings} onSettingsChange={applySettings} onAddTargetAreas={addTargetAreas} />}
           {tab === "deals" && !selectedDeal && <DealsListView deals={deals} thresholds={effectiveThresholds} onSelect={setSelectedId} onAdd={addDeal} onAddExample={addExampleDeal} onDelete={deleteDeal} marketStats={marketStats} />}
           {tab === "deals" && selectedDeal && <DealDetailView deal={selectedDeal} onChange={(p) => updateDeal(selectedDeal.id, p)} onDelete={deleteDeal} onBack={() => setSelectedId(null)} thresholds={effectiveThresholds} defaultBuyBox={defaultBuyBox} settings={settings} onMoveToRental={() => moveDealToRentalManagement(selectedDeal)} alreadyLinkedProperty={properties.find((p) => p.dealId === selectedDeal.id)} ownerUid={user.uid} surveyRates={settings.surveyRates} onSurveyRatesChange={(surveyRates) => applySettings({ ...settings, surveyRates })} marketStats={marketStats} />}
@@ -5746,6 +6382,7 @@ function AppInner({ user }) {
           {tab === "properties" && !selectedProperty && <PropertiesListView properties={properties} deals={deals} onSelect={setSelectedPropertyId} onAdd={addProperty} onDelete={deleteProperty} />}
           {tab === "properties" && selectedProperty && <PropertyDetailView property={selectedProperty} linkedDeal={deals.find((d) => d.id === selectedProperty.dealId)} onChange={(p) => updateProperty(selectedProperty.id, p)} onDelete={deleteProperty} onBack={() => setSelectedPropertyId(null)} />}
           {tab === "notifications" && <NotificationsView notifications={notifications} onMarkRead={markNotificationRead} onMarkAllRead={markAllNotificationsRead} settings={settings} onSettingsChange={applySettings} onGoToDeal={(id) => { setTab("deals"); setSelectedId(id); }} onGoToLead={() => setTab("sourcing")} />}
+          {tab === "settings" && <SettingsView settings={settings} onSettingsChange={applySettings} />}
           {tab === "guide" && <UserGuideView />}
           <_AttributionFooter />
         </main>
