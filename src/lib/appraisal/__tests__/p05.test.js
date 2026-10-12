@@ -6,6 +6,63 @@ import { flipBudget, splitBudget } from "../flip.js";
 import { splitBudget as splitBudgetSolve } from "../solve.js";
 import { mapLegalPackCostLines, auctionFlipWalkAway } from "../auction.js";
 import { sumCosts } from "../costs.js";
+import { strategyVerdict, STRATEGY_TESTS } from "../walkaway.js";
+
+// ── strategyVerdict — Phase D (unified, strategy-filtered verdict) ────────────
+
+const FULL_PASS = [
+  { id: "value",      status: "pass" },
+  { id: "costs",      status: "pass" },
+  { id: "refinance",  status: "pass" },
+  { id: "cashflow",   status: "pass" },
+  { id: "resilience", status: "pass" },
+];
+
+const REFI_CASH_FAIL = FULL_PASS.map((t) =>
+  t.id === "refinance" || t.id === "cashflow" ? { ...t, status: "fail" } : t
+);
+
+describe("strategyVerdict — flip excludes refinance + cashflow", () => {
+  it("flip: pass when ONLY refinance and cashflow fail", () => {
+    expect(strategyVerdict(REFI_CASH_FAIL, "flip")).toBe("pass");
+  });
+  it("brrr: fail when cashflow fails", () => {
+    expect(strategyVerdict(REFI_CASH_FAIL, "brrr")).toBe("fail");
+  });
+  it("flip: warn when value test warns", () => {
+    const tests = REFI_CASH_FAIL.map((t) => t.id === "value" ? { ...t, status: "warn" } : t);
+    expect(strategyVerdict(tests, "flip")).toBe("warn");
+  });
+  it("flip: fail when costs fail", () => {
+    const tests = REFI_CASH_FAIL.map((t) => t.id === "costs" ? { ...t, status: "fail" } : t);
+    expect(strategyVerdict(tests, "flip")).toBe("fail");
+  });
+  it("all pass → pass for both strategies", () => {
+    expect(strategyVerdict(FULL_PASS, "flip")).toBe("pass");
+    expect(strategyVerdict(FULL_PASS, "brrr")).toBe("pass");
+  });
+  it("unknown strategy falls back to brrr (all tests)", () => {
+    expect(strategyVerdict(REFI_CASH_FAIL, "hybrid")).toBe("fail");
+  });
+  it("empty tests array → warn (incomplete)", () => {
+    expect(strategyVerdict([], "flip")).toBe("warn");
+  });
+});
+
+describe("STRATEGY_TESTS constants", () => {
+  it("flip set: value, costs, resilience only", () => {
+    expect(STRATEGY_TESTS.flip.has("value")).toBe(true);
+    expect(STRATEGY_TESTS.flip.has("costs")).toBe(true);
+    expect(STRATEGY_TESTS.flip.has("resilience")).toBe(true);
+    expect(STRATEGY_TESTS.flip.has("refinance")).toBe(false);
+    expect(STRATEGY_TESTS.flip.has("cashflow")).toBe(false);
+  });
+  it("brrr set: all five tests", () => {
+    ["value", "costs", "refinance", "cashflow", "resilience"].forEach((id) => {
+      expect(STRATEGY_TESTS.brrr.has(id)).toBe(true);
+    });
+  });
+});
 
 // ── Daniel flip golden case ───────────────────────────────────────────────────
 // 22 Gladstone Street, Rochdale. Auction guide £85k.

@@ -144,3 +144,32 @@ export function walkAway(deal, settings = {}) {
 
   return { verdict, tests };
 }
+
+// ── Strategy-filtered verdict ──────────────────────────────────────────────────
+
+/**
+ * Walk-away test IDs applicable per strategy.
+ * Flip exits before refinance/hold — tests 3 (refinance) and 4 (cashflow/ICR) don't apply.
+ * Hybrid (rare) and unknown strategies fall back to the full BRRR set.
+ */
+export const STRATEGY_TESTS = {
+  flip: new Set(["value", "costs", "resilience"]),
+  brrr: new Set(["value", "costs", "refinance", "cashflow", "resilience"]),
+};
+
+/**
+ * Derive the overall verdict from walk-away results, filtering to only the tests
+ * that are relevant for the active strategy.
+ *
+ * @param {Array<{id:string, status:'pass'|'warn'|'fail'}>} tests  From walkAway().tests
+ * @param {'flip'|'brrr'|'hybrid'|string} strategy
+ * @returns {'pass'|'warn'|'fail'}
+ */
+export function strategyVerdict(tests, strategy) {
+  const allowed  = STRATEGY_TESTS[strategy] ?? STRATEGY_TESTS.brrr; // unknown → all tests
+  const relevant = tests.filter((t) => allowed.has(t.id));
+  if (relevant.length === 0) return "warn"; // no applicable tests → incomplete
+  const order    = ["pass", "warn", "fail"];
+  const worstIdx = Math.max(...relevant.map((t) => order.indexOf(t.status)));
+  return order[worstIdx] ?? "pass";
+}

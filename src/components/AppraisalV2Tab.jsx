@@ -21,6 +21,7 @@ import {
 } from "../lib/appraisal/index.js";
 import { capitalCost, recycling } from "../lib/appraisal/capital.js";
 import { DEFAULT_APPRAISAL_SETTINGS } from "../lib/migrations/v2.js";
+import { strategyVerdict, STRATEGY_TESTS } from "../lib/appraisal/walkaway.js";
 import { round2 } from "../lib/utils.js";
 
 // ── Local formatting ─────────────────────────────────────────────────────────
@@ -370,7 +371,11 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
     legalCost, refurbCost, holdingCost } = computed;
 
   // ── Verdict bar tone ────────────────────────────────────────────────────────
-  const verdict = walkResult?.verdict || "pass";
+  // Use strategy-filtered verdict; incomplete data defaults to "warn" not "pass" (RULE 7)
+  const verdictIncomplete = !walkResult && endValue == null;
+  const verdict = walkResult
+    ? strategyVerdict(walkResult.tests, strategy)
+    : (verdictIncomplete ? "warn" : "pass");
   const verdictTone = VERDICT_TONE[verdict] || "default";
 
   // ── Cost line helpers ───────────────────────────────────────────────────────
@@ -439,20 +444,34 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
     <div className="space-y-4">
 
       {/* ── Verdict bar ─────────────────────────────────────────────────── */}
-      <div className={`flex items-center justify-between rounded px-4 py-3 text-sm font-semibold border ${
+      <div className={`rounded border px-4 py-3 text-sm font-semibold border ${
         verdict === "pass" ? "bg-vx-surface border-vx-positive text-vx-positive"
           : verdict === "warn" ? "bg-vx-surface border-vx-caution text-vx-caution"
           : "bg-vx-surface border-vx-negative text-vx-negative"
       }`}>
-        <span>Appraisal v2</span>
-        <span className="font-mono text-lg">
-          {STATUS_ICON[verdict]} {verdict.toUpperCase()}
-          {walkResult && walkResult.tests.some(t => t.status === "fail") && (
-            <span className="text-xs font-normal ml-2 opacity-80">
-              {walkResult.tests.filter(t => t.status === "fail").map(t => t.id).join(", ")}
-            </span>
-          )}
-        </span>
+        <div className="flex items-center justify-between">
+          <span>{strategy === "flip" ? "Flip" : "BRRR"} — Appraisal v2</span>
+          <span className="font-mono text-lg">
+            {STATUS_ICON[verdict]} {verdictIncomplete ? "INCOMPLETE" : verdict.toUpperCase()}
+          </span>
+        </div>
+        {walkResult && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+            {walkResult.tests
+              .filter(t => (STRATEGY_TESTS[strategy] ?? STRATEGY_TESTS.brrr).has(t.id))
+              .map(t => (
+                <span key={t.id} className={`text-xs font-normal flex items-center gap-1 ${
+                  t.status === "pass" ? "opacity-80" : ""
+                }`}>
+                  {STATUS_ICON[t.status]} {t.id}
+                </span>
+              ))
+            }
+          </div>
+        )}
+        {verdictIncomplete && (
+          <p className="text-xs font-normal opacity-75 mt-1">Enter valuation and cost lines to compute.</p>
+        )}
       </div>
 
       {/* ── Strategy + Max offer ────────────────────────────────────────── */}
@@ -1099,25 +1118,33 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
         <A2Card>
           <A2Section title="Walk-away tests">
             <div className="space-y-2">
-              {walkResult.tests.map((t) => (
-                <div key={t.id} className={`p-2 rounded border-l-4 ${
-                  t.status === "pass" ? "border-vx-positive bg-vx-surface" :
-                  t.status === "warn" ? "border-vx-caution bg-vx-surface" :
-                  "border-vx-negative bg-vx-surface"
-                }`}>
-                  <div className={`text-xs font-semibold flex items-center gap-1 ${
-                    t.status === "pass" ? "text-vx-positive" : t.status === "warn" ? "text-vx-caution" : "text-vx-negative"
+              {walkResult.tests
+                .filter(t => (STRATEGY_TESTS[strategy] ?? STRATEGY_TESTS.brrr).has(t.id))
+                .map((t) => (
+                  <div key={t.id} className={`p-2 rounded border-l-4 ${
+                    t.status === "pass" ? "border-vx-positive bg-vx-surface" :
+                    t.status === "warn" ? "border-vx-caution bg-vx-surface" :
+                    "border-vx-negative bg-vx-surface"
                   }`}>
-                    {STATUS_ICON[t.status]} {t.id.charAt(0).toUpperCase() + t.id.slice(1)}
+                    <div className={`text-xs font-semibold flex items-center gap-1 ${
+                      t.status === "pass" ? "text-vx-positive" : t.status === "warn" ? "text-vx-caution" : "text-vx-negative"
+                    }`}>
+                      {STATUS_ICON[t.status]} {t.id.charAt(0).toUpperCase() + t.id.slice(1)}
+                    </div>
+                    {t.reasons.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {t.reasons.map((r, i) => <li key={i} className="text-xs text-vx-muted">{r}</li>)}
+                      </ul>
+                    )}
                   </div>
-                  {t.reasons.length > 0 && (
-                    <ul className="mt-1 space-y-0.5">
-                      {t.reasons.map((r, i) => <li key={i} className="text-xs text-vx-muted">{r}</li>)}
-                    </ul>
-                  )}
-                </div>
-              ))}
+                ))
+              }
             </div>
+            {strategy === "flip" && (
+              <p className="text-xs text-vx-muted mt-2">
+                Refinance and cash-flow tests not shown — not applicable to a flip exit.
+              </p>
+            )}
           </A2Section>
         </A2Card>
       )}

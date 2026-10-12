@@ -1,5 +1,24 @@
 # Appraisal v2 — Changelog
 
+## Phase D — Unified, strategy-filtered verdict · 12 October 2026
+
+### Fixed
+- **Incomplete = PASS bug**: a deal with no valuation entered showed green PASS. Now shows amber INCOMPLETE.
+  `verdict = walkResult ? strategyVerdict(tests, strategy) : (endValue == null ? "warn" : "pass")`
+- **Strategy-blind cashflow/ICR test**: a flip deal with `rent = 0` always failed the cashflow walk-away test (ICR fails on zero rent) even though ICR is irrelevant to a flip exit. Refinance headroom test also ran, producing misleading results. Both are now suppressed for flip.
+
+### Added
+- `strategyVerdict(tests, strategy)` exported from `src/lib/appraisal/walkaway.js` — filters to strategy-relevant tests before deriving worst verdict
+- `STRATEGY_TESTS` constant exported: flip → `{value, costs, resilience}`; brrr → all five tests
+- 9 new tests in `p05.test.js`; **238/238 passing**
+
+### Changed
+- Verdict bar: now shows strategy label ("Flip — Appraisal v2" / "BRRR — Appraisal v2") and a mini test-status checklist below the verdict
+- Verdict bar: shows "INCOMPLETE" when there is no valuation, with a prompt to enter data
+- Walk-away tests card: filtered to strategy-relevant tests only; flip deals see a note "Refinance and cash-flow tests not shown — not applicable to a flip exit"
+
+---
+
 ## Phase C — Playbook strategy + threshold defaults · 12 October 2026
 
 ### Changed
