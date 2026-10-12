@@ -1,5 +1,33 @@
 # Appraisal v2 — Changelog
 
+## Phase E — Terminology and labelling · 12 October 2026
+
+### Changed (no logic or data changes — UI text only)
+
+| Location | Before | After |
+|---|---|---|
+| Verdict bar header | `Flip — Appraisal v2` | `Flip — Deal appraisal` |
+| Verdict bar test checklist | raw IDs: `cashflow`, `refinance` | human labels via `TEST_LABELS` map: `Cash flow`, `Refinance` |
+| Walk-away tests card | `Cashflow` (capitalised raw ID) | `Cash flow` |
+| Valuation basis caption | `(RULE 9 — worst default)` | `worst case is the safe default` |
+| Refurb scenario caption | `(RULE 9 — worst default)` | `worst case is the safe default` |
+| Bridge calculator note | "Daniel's actual quote was £850/month; the classroom golden case…" | "Always use the lender's own illustration — these figures are indicative only." |
+| Bridge shortfall warning | `Paul must bring` | `Buyer must bring` |
+| BRRR Refinance section label | `Refi LTV` | `Refinance LTV` |
+| BRRR Refinance section label | `Refi fees (£)` | `Refinance fees (£)` |
+| Fragility card KPI | `Minimum value for refi to cover costs` | `Minimum value for refinance to cover costs` |
+| Fragility card KPI | `Refi surplus / shortfall` | `Refinance surplus / shortfall` |
+| Per-deal overrides | `Refi LTV` | `Refinance LTV` |
+| Per-deal overrides | `Profit target % GDV` | `Profit target (% of end value)` |
+| Per-deal overrides | `Min net monthly £` | `Min net monthly (£)` |
+| Per-deal overrides | `Min headroom %` | `Min break-even headroom (%)` |
+| Per-deal overrides | `Accepted cash left in £` | `Max cash left in deal (£)` |
+| Per-deal overrides description (BRRR summary line) | `Refi at … LTV` | `Refinance at … LTV` |
+
+238/238 tests pass (no logic changes).
+
+---
+
 ## Phase D — Unified, strategy-filtered verdict · 12 October 2026
 
 ### Fixed

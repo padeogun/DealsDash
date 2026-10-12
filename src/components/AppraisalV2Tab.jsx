@@ -130,6 +130,7 @@ const BASIS_OPTIONS = [["worst", "Worst"], ["mid", "Mid"], ["best", "Best"]];
 const STRATEGY_OPTIONS = [["flip", "Flip"], ["brrr", "BRRR"]];
 const BASIS_LABELS = { quote: "Quote", estimate: "Estimate", benchmark: "Benchmark", illustrative: "Illustrative" };
 const BASIS_TONE   = { quote: "good", estimate: "default", benchmark: "warn", illustrative: "warn" };
+const TEST_LABELS  = { value: "Value", costs: "Costs", refinance: "Refinance", cashflow: "Cash flow", resilience: "Resilience" };
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -450,7 +451,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
           : "bg-vx-surface border-vx-negative text-vx-negative"
       }`}>
         <div className="flex items-center justify-between">
-          <span>{strategy === "flip" ? "Flip" : "BRRR"} — Appraisal v2</span>
+          <span>{strategy === "flip" ? "Flip" : "BRRR"} — Deal appraisal</span>
           <span className="font-mono text-lg">
             {STATUS_ICON[verdict]} {verdictIncomplete ? "INCOMPLETE" : verdict.toUpperCase()}
           </span>
@@ -463,7 +464,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
                 <span key={t.id} className={`text-xs font-normal flex items-center gap-1 ${
                   t.status === "pass" ? "opacity-80" : ""
                 }`}>
-                  {STATUS_ICON[t.status]} {t.id}
+                  {STATUS_ICON[t.status]} {TEST_LABELS[t.id] || t.id}
                 </span>
               ))
             }
@@ -513,7 +514,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
           <p className="text-xs text-vx-muted">
             {strategy === "flip"
               ? <>Stacked on {valBasis}-case value {fmtGBP(endValue)}. Profit target {fmtPct(profitPct)} ({fmtGBP(computed.targetProfit)}) taken first.<A2Illustrative /></>
-              : <>Refi at {fmtPct(ltv)} LTV on {valBasis}-case value {fmtGBP(endValue)}. Accepted cash left in {fmtGBP(acceptedLeftIn)}.<A2Illustrative /></>
+              : <>Refinance at {fmtPct(ltv)} LTV on {valBasis}-case value {fmtGBP(endValue)}. Accepted cash left in {fmtGBP(acceptedLeftIn)}.<A2Illustrative /></>
             }
           </p>
         )}
@@ -536,7 +537,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
       <A2Card>
         <A2Section title="Valuation">
           <div className="flex items-center gap-2 mb-2 text-xs text-vx-muted">
-            <span>Appraisal basis (RULE 9 — worst default):</span>
+            <span>Appraisal basis — worst case is the safe default:</span>
             <div className="flex rounded overflow-hidden border border-vx-border text-xs font-medium">
               {BASIS_OPTIONS.map(([k, label]) => (
                 <button key={k} type="button"
@@ -645,7 +646,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
         {(v2.refurb?.mode === "detail") ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3 text-xs text-vx-muted">
-              <span>Scenario (RULE 9 — worst default):</span>
+              <span>Scenario — worst case is the safe default:</span>
               <div className="flex rounded overflow-hidden border border-vx-border font-medium">
                 {[["high", "Worst"], ["mid", "Mid"], ["low", "Best"]].map(([k, label]) => (
                   <button key={k} type="button"
@@ -929,8 +930,8 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
                     <div className="flex items-start gap-1.5 text-xs text-vx-caution bg-vx-surface border border-vx-caution rounded p-2">
                       <Info size={12} className="mt-0.5 flex-shrink-0" />
                       Day-one release {fmtGBP(bridgeCalc.dayOneRelease)} is {fmtGBP(shortfall)} short of completion funds
-                      (price {fmtGBP(deal.price)} + SDLT {fmtGBP(split?.sdlt)}). Paul must bring{" "}
-                      <strong>{fmtGBP(shortfall)}</strong> to completion.
+                      (price {fmtGBP(deal.price)} + SDLT {fmtGBP(split?.sdlt)}).{" "}
+                      Buyer must bring <strong>{fmtGBP(shortfall)}</strong> to completion.
                     </div>
                   ) : null;
                 })()}
@@ -962,8 +963,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
 
                 {/* Lender note (P04 spec) */}
                 <p className="text-xs text-vx-muted italic">
-                  Note: Daniel's actual quote was £850/month; the classroom golden case used 1% (£750). Always use
-                  the lender's own illustration — these figures are indicative only.
+                  Always use the lender's own illustration — these figures are indicative only.
                 </p>
               </div>
             ) : (
@@ -985,9 +985,9 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
         <A2Card>
           <A2Section title="Refinance">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <A2PctField label={<>Refi LTV<A2Illustrative /></>} value={ltv}
+              <A2PctField label={<>Refinance LTV<A2Illustrative /></>} value={ltv}
                 onChange={(v) => setRefinance({ ltv: v })} />
-              <A2NumField label="Refi fees (£)" value={refiFees || null}
+              <A2NumField label="Refinance fees (£)" value={refiFees || null}
                 placeholder="0" onChange={(v) => setRefinance({ refiFees: v || 0 })} />
               <A2NumField label={<>Accepted cash left in<A2Illustrative /></>}
                 value={v2.refinance?.acceptedLeftIn ?? null}
@@ -1054,11 +1054,11 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
           {strategy === "brrr" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <A2KPI label="Break-even valuation" value={fmtGBP(bev)}
-                sub="Minimum value for refi to cover costs" />
+                sub="Minimum value for refinance to cover costs" />
               <A2KPI label="Headroom" value={fmtPct(hw)}
                 tone={hw == null ? "default" : hw >= minHeadroom ? "good" : hw >= 0 ? "warn" : "bad"}
                 sub={`Threshold ${fmtPct(minHeadroom)}`} />
-              <A2KPI label="Refi surplus / shortfall" value={fmtGBP(rp)}
+              <A2KPI label="Refinance surplus / shortfall" value={fmtGBP(rp)}
                 tone={rp == null ? "default" : rp >= 0 ? "good" : "bad"} />
             </div>
           ) : (
@@ -1129,7 +1129,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
                     <div className={`text-xs font-semibold flex items-center gap-1 ${
                       t.status === "pass" ? "text-vx-positive" : t.status === "warn" ? "text-vx-caution" : "text-vx-negative"
                     }`}>
-                      {STATUS_ICON[t.status]} {t.id.charAt(0).toUpperCase() + t.id.slice(1)}
+                      {STATUS_ICON[t.status]} {TEST_LABELS[t.id] || t.id}
                     </div>
                     {t.reasons.length > 0 && (
                       <ul className="mt-1 space-y-0.5">
@@ -1222,7 +1222,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
         </button>
         {overridesOpen && (
           <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
-            <A2PctField label={<>Profit target % GDV<A2Illustrative /></>}
+            <A2PctField label={<>Profit target (% of end value)<A2Illustrative /></>}
               value={v2.profitPct}
               placeholder={fmtPct(bbVal("targetProfitOnCostPct") ?? apprCfg.profitPctDefault)}
               onChange={(v) => setV2({ profitPct: v })} />
@@ -1230,17 +1230,17 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
               value={v2.icr}
               placeholder={String(bbVal("icrThresholdPct") ?? apprCfg.icr)}
               onChange={(v) => setV2({ icr: v })} />
-            <A2NumField label={<>Min net monthly £<A2Illustrative /></>}
+            <A2NumField label={<>Min net monthly (£)<A2Illustrative /></>}
               value={v2.minNetMonthly} placeholder={String(apprCfg.minNetMonthly)}
               onChange={(v) => setV2({ minNetMonthly: v })} />
-            <A2PctField label={<>Min headroom %<A2Illustrative /></>}
+            <A2PctField label={<>Min break-even headroom (%)<A2Illustrative /></>}
               value={v2.minHeadroomPct} placeholder={fmtPct(apprCfg.minHeadroomPct)}
               onChange={(v) => setV2({ minHeadroomPct: v })} />
-            <A2NumField label={<>Accepted cash left in £<A2Illustrative /></>}
+            <A2NumField label={<>Max cash left in deal (£)<A2Illustrative /></>}
               value={v2.refinance?.acceptedLeftIn}
               placeholder={String(bbVal("maxMoneyLeftInGBP") ?? apprCfg.acceptedLeftInDefault)}
               onChange={(v) => setRefinance({ acceptedLeftIn: v })} />
-            <A2PctField label={<>Refi LTV<A2Illustrative /></>}
+            <A2PctField label={<>Refinance LTV<A2Illustrative /></>}
               value={v2.refinance?.ltv}
               placeholder={String(round2((bbVal("refiLtvPct") ?? 0.75) * 100))}
               onChange={(v) => setRefinance({ ltv: v })} />
