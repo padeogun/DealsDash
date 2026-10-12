@@ -9,6 +9,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Info, ExternalLink, Calculator } 
 import {
   basisValue, toValuation,
   sumCosts, costLine,
+  legalTotal, refurbTotal, holdingCostLine, holdingMonthlyRate, totalProjectMonths,
   flipBudget, flipBreakEvenSale, flipTargetSale,
   brrrBudget, breakEvenValuation, headroomPct, refiPosition,
   splitBudget,
@@ -16,7 +17,7 @@ import {
   walkAway,
   runStress,
   sdlt as sdltDetail,
-  bridgeRelease,
+  bridgeRelease, bridgeLump,
 } from "../lib/appraisal/index.js";
 import { capitalCost, recycling } from "../lib/appraisal/capital.js";
 import { DEFAULT_APPRAISAL_SETTINGS } from "../lib/migrations/v2.js";
@@ -107,6 +108,18 @@ function A2PctField({ label, value, onChange, placeholder }) {
 function A2Illustrative() {
   return <span className="text-xs text-vx-caution ml-1" title="Illustrative — verify before bidding">Illustrative</span>;
 }
+function A2ModeToggle({ mode, onChange }) {
+  return (
+    <div className="flex rounded overflow-hidden border border-vx-border text-xs font-medium">
+      {[["lump", "Lump sum"], ["detail", "Itemised"]].map(([k, label]) => (
+        <button key={k} type="button" onClick={() => onChange(k)}
+          className={`px-3 py-1 ${mode === k ? "bg-vx-accent text-vx-accent-fg" : "bg-vx-bg text-vx-muted hover:bg-vx-surface"}`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // ── Verdict helpers ───────────────────────────────────────────────────────────
 const VERDICT_TONE  = { pass: "good",     warn: "warn",    fail: "bad"  };
@@ -120,15 +133,10 @@ const BASIS_TONE   = { quote: "good", estimate: "default", benchmark: "warn", il
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
- * P03 Appraisal v2 tab rendered inside DealDetailView.
- *
- * @param {{ deal, onChange, settings, v1Appraisal }} props
- *   deal       — the full deal object (deal.v2 is the v2 block)
- *   onChange   — (patch) => void  (patches merged into deal)
- *   settings   — app settings doc (settings.appraisal has global thresholds)
- *   v1Appraisal — result of appraiseDeal(enrichDeal(deal)) for v1 comparison
+ * Appraisal v2 tab rendered inside DealDetailView.
+ * @param {{ deal, onChange, settings }} props
  */
-export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }) {
+export default function AppraisalV2Tab({ deal, onChange, settings }) {
   const [stressExpanded, setStressExpanded] = useState(false);
   const [overridesOpen, setOverridesOpen] = useState(false);
 
@@ -143,6 +151,18 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
   function setRefinance(patch) {
     setV2({ refinance: { ...(v2.refinance || {}), ...patch } });
   }
+  function setLegal(patch) {
+    setV2({ legal: { ...(v2.legal || {}), ...patch } });
+  }
+  function setRefurb(patch) {
+    setV2({ refurb: { ...(v2.refurb || {}), ...patch } });
+  }
+  function setHolding(patch) {
+    setV2({ holding: { ...(v2.holding || {}), ...patch } });
+  }
+
+  // Project duration from phases — used by holding cost calculation
+  const projMonths = totalProjectMonths(deal.phases || []);
 
   // ── Resolved settings (per-deal overrides fall back to global) ────────────
   const apprCfg = settings?.appraisal || DEFAULT_APPRAISAL_SETTINGS;
@@ -194,25 +214,50 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
 
   // ── Engine computations ─────────────────────────────────────────────────────
   const computed = useMemo(() => {
-    const costsSummary = sumCosts(v2.costLines || []);
-    const totalCosts   = costsSummary.total;   // null if any line unknown
-    const endValue     = valuation.worst != null || valuation.mid != null || valuation.best != null
+    // Structured cost sub-blocks (Phase A1/A2)
+    const legalCost   = legalTotal(v2.legal);
+    const refurbCost  = refurbTotal(v2.refurb);
+    const holdingCost = holdingCostLine(v2.holding, projMonths).amount;
+    const miscSummary = sumCosts(v2.costLines || []);
+
+    // If ANY structured sub-block has been entered, use the structured path.
+    // All entered sub-blocks must be non-null for a complete result (RULE 7).
+    // Legacy path (all null): fall back to miscSummary alone.
+    const hasStructured  = legalCost !== null || refurbCost !== null || holdingCost !== null;
+    let costsSummary, totalCosts;
+    if (hasStructured) {
+      const structMissing = [
+        ...(legalCost   === null ? ["legal"]   : []),
+        ...(refurbCost  === null ? ["refurb"]  : []),
+        ...(holdingCost === null ? ["holding"] : []),
+        ...(miscSummary.missing || []),
+      ];
+      const isComplete = structMissing.length === 0;
+      const sum = round2((legalCost ?? 0) + (refurbCost ?? 0) + (holdingCost ?? 0) + (miscSummary.total ?? 0));
+      costsSummary = { total: isComplete ? sum : null, status: isComplete ? "complete" : "incomplete", missing: structMissing };
+      totalCosts   = costsSummary.total;
+    } else {
+      costsSummary = miscSummary;
+      totalCosts   = miscSummary.total;
+    }
+
+    const endValue = valuation.worst != null || valuation.mid != null || valuation.best != null
       ? basisValue(valuation)
       : null;
 
-    // Finance cost from bridge source when Paul enables the computed toggle
-    const financeFromSource = v2.useComputedFinance && bridgeCalc ? bridgeCalc.financeCost : 0;
+    // Finance cost from bridge source — always included when a source is configured (Phase A2)
+    const financeFromSource = bridgeCalc ? bridgeCalc.financeCost : 0;
 
     // Budget = what we can spend on price + SDLT
     let budgetResult;
     if (strategy === "flip") {
       budgetResult = totalCosts !== null && endValue !== null
         ? flipBudget({ gdv: valuation, profitPct, refurb: totalCosts, legals: 0, saleCosts: 0, finance: financeFromSource, holding: 0 })
-        : { status: "incomplete", missing: totalCosts === null ? ["costLines"] : ["valuation"] };
+        : { status: "incomplete", missing: totalCosts === null ? (costsSummary.missing || ["costs"]) : ["valuation"] };
     } else {
       budgetResult = totalCosts !== null && endValue !== null
         ? brrrBudget({ endValue, ltv, refiFees: refiFees || 0, acceptedLeftIn, refurb: totalCosts, legals: 0, finance: financeFromSource, holding: 0 })
-        : { status: "incomplete", missing: totalCosts === null ? ["costLines"] : ["valuation"] };
+        : { status: "incomplete", missing: totalCosts === null ? (costsSummary.missing || ["costs"]) : ["valuation"] };
     }
 
     const isOk    = typeof budgetResult === "number";
@@ -306,13 +351,15 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
       refiLoan, mortgage, cfResult, icrResult,
       walkResult, stressResults,
       endValue, financeFromSource,
+      legalCost, refurbCost, holdingCost,
     };
   }, [v2, strategy, profitPct, ltv, refiFees, acceptedLeftIn, rent, btlRate,
-      reserves, icrThreshold, icrStressRate, minHeadroom, minNetMonthly, bridgeCalc]);
+      reserves, icrThreshold, icrStressRate, minHeadroom, minNetMonthly, bridgeCalc, projMonths]);
 
   const { costsSummary, budget, split, sdltInfo, totalProjectCost,
     bev, hw, rp, flipBreakEven, flipTarget, cashReleased, cashLeftInVal, financeFromSource,
-    equity, mortgage, cfResult, icrResult, walkResult, stressResults, endValue } = computed;
+    equity, mortgage, cfResult, icrResult, walkResult, stressResults, endValue,
+    legalCost, refurbCost, holdingCost } = computed;
 
   // ── Verdict bar tone ────────────────────────────────────────────────────────
   const verdict = walkResult?.verdict || "pass";
@@ -505,9 +552,187 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
         </A2Section>
       </A2Card>
 
-      {/* ── Cost lines ──────────────────────────────────────────────────── */}
+      {/* ── Legal & acquisition costs ───────────────────────────────────── */}
       <A2Card>
-        <A2Section title="Cost lines">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-vx-text">Legal &amp; acquisition costs</h4>
+          <A2ModeToggle mode={v2.legal?.mode || "lump"} onChange={(m) => setLegal({ mode: m })} />
+        </div>
+
+        {(v2.legal?.mode === "detail") ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <A2NumField label="Solicitor" value={v2.legal?.solicitor} onChange={(v) => setLegal({ solicitor: v })} />
+              <A2NumField label="Searches" value={v2.legal?.searches} onChange={(v) => setLegal({ searches: v })} />
+              <A2NumField label="Survey" value={v2.legal?.survey} onChange={(v) => setLegal({ survey: v })} />
+              <A2NumField label="Broker fee" value={v2.legal?.broker} onChange={(v) => setLegal({ broker: v })} />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <A2NumField label="Valuation fee" value={v2.legal?.valuation} onChange={(v) => setLegal({ valuation: v })} />
+              <A2NumField label="Land Registry" value={v2.legal?.landReg} onChange={(v) => setLegal({ landReg: v })} />
+              <A2NumField label="Other" value={v2.legal?.other} onChange={(v) => setLegal({ other: v })} />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <A2NumField label="Total legal & acquisition costs" value={v2.legal?.lumpTotal}
+              onChange={(v) => setLegal({ lumpTotal: v })} />
+            <div>
+              <span className="block text-xs font-medium text-vx-muted mb-1">Basis</span>
+              <select value={v2.legal?.lumpBasis || "estimate"}
+                onChange={(e) => setLegal({ lumpBasis: e.target.value })}
+                className="w-full py-1.5 px-2 text-xs border border-vx-border rounded bg-vx-bg outline-none">
+                {Object.entries(BASIS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {legalCost == null
+            ? <A2Badge tone="unknown">Unknown — enter to unlock engine</A2Badge>
+            : <span className="text-xs font-mono font-semibold text-vx-positive">{fmtGBP(legalCost)}</span>
+          }
+        </div>
+      </A2Card>
+
+      {/* ── Refurbishment ───────────────────────────────────────────────── */}
+      <A2Card>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-vx-text">Refurbishment</h4>
+          <A2ModeToggle mode={v2.refurb?.mode || "lump"} onChange={(m) => setRefurb({ mode: m })} />
+        </div>
+
+        {(v2.refurb?.mode === "detail") ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-xs text-vx-muted">
+              <span>Scenario (RULE 9 — worst default):</span>
+              <div className="flex rounded overflow-hidden border border-vx-border font-medium">
+                {[["high", "Worst"], ["mid", "Mid"], ["low", "Best"]].map(([k, label]) => (
+                  <button key={k} type="button"
+                    onClick={() => setRefurb({ scenario: k })}
+                    className={`px-3 py-0.5 ${(v2.refurb?.scenario || "high") === k ? "bg-vx-accent text-vx-accent-fg" : "bg-vx-bg text-vx-muted hover:bg-vx-surface"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(v2.refurb?.items || []).map((item, i) => (
+                <div key={i} className="grid grid-cols-3 md:grid-cols-4 gap-2 items-end bg-vx-surface p-2 rounded text-xs">
+                  <A2TextField label={i === 0 ? "Item" : ""}
+                    value={item.label || ""}
+                    onChange={(v) => {
+                      const items = (v2.refurb?.items || []).map((it, j) => j === i ? { ...it, label: v } : it);
+                      setRefurb({ items });
+                    }} />
+                  <A2NumField label={i === 0 ? "Low (£)" : ""}
+                    value={item.low}
+                    onChange={(v) => {
+                      const items = (v2.refurb?.items || []).map((it, j) => j === i ? { ...it, low: v } : it);
+                      setRefurb({ items });
+                    }} />
+                  <A2NumField label={i === 0 ? "High (£)" : ""}
+                    value={item.high}
+                    onChange={(v) => {
+                      const items = (v2.refurb?.items || []).map((it, j) => j === i ? { ...it, high: v } : it);
+                      setRefurb({ items });
+                    }} />
+                  <div className="flex items-end justify-between gap-1">
+                    {item.low != null && item.high != null ? (
+                      <span className="text-xs font-mono text-vx-muted">
+                        {(v2.refurb?.scenario || "high") === "high" ? fmtGBP(item.high)
+                          : (v2.refurb?.scenario || "high") === "low" ? fmtGBP(item.low)
+                          : fmtGBP(round2((Number(item.low) + Number(item.high)) / 2))}
+                      </span>
+                    ) : <span />}
+                    <button type="button"
+                      onClick={() => setRefurb({ items: (v2.refurb?.items || []).filter((_, j) => j !== i) })}
+                      className="text-vx-muted hover:text-vx-negative"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <button type="button"
+                onClick={() => setRefurb({ items: [...(v2.refurb?.items || []), { label: "New item", low: null, high: null, amount: null }] })}
+                className="text-xs text-vx-accent flex items-center gap-1 hover:underline">
+                <Plus size={12} /> Add item
+              </button>
+              <A2PctField label={<>Contingency %<A2Illustrative /></>}
+                value={v2.refurb?.contingencyPct ?? 0.15}
+                onChange={(v) => setRefurb({ contingencyPct: v })} />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <A2NumField label="Total refurb cost (ex. contingency)" value={v2.refurb?.lumpTotal}
+              onChange={(v) => setRefurb({ lumpTotal: v })} />
+            <A2PctField label={<>Contingency %<A2Illustrative /></>}
+              value={v2.refurb?.contingencyPct ?? 0.15}
+              onChange={(v) => setRefurb({ contingencyPct: v })} />
+          </div>
+        )}
+
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {refurbCost == null
+            ? <A2Badge tone="unknown">Unknown — enter to unlock engine</A2Badge>
+            : <>
+                <span className="text-xs font-mono font-semibold text-vx-positive">{fmtGBP(refurbCost)}</span>
+                {(v2.refurb?.contingencyPct ?? 0) > 0 && (
+                  <span className="text-xs text-vx-muted">(incl. {fmtPct(v2.refurb.contingencyPct)} contingency)</span>
+                )}
+              </>
+          }
+        </div>
+      </A2Card>
+
+      {/* ── Holding costs ───────────────────────────────────────────────── */}
+      <A2Card>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-vx-text">Holding costs (non-finance)</h4>
+          <A2ModeToggle mode={v2.holding?.mode || "lump"} onChange={(m) => setHolding({ mode: m })} />
+        </div>
+
+        {(v2.holding?.mode === "detail") ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <A2NumField label="Council tax (£/mo)" value={v2.holding?.ctax} onChange={(v) => setHolding({ ctax: v })} />
+            <A2NumField label="Insurance (£/mo)" value={v2.holding?.insurance} onChange={(v) => setHolding({ insurance: v })} />
+            <A2NumField label="Utilities (£/mo)" value={v2.holding?.utilities} onChange={(v) => setHolding({ utilities: v })} />
+            <A2NumField label="Other (£/mo)" value={v2.holding?.other} onChange={(v) => setHolding({ other: v })} />
+          </div>
+        ) : (
+          <A2NumField label="Monthly holding cost (£/mo)" value={v2.holding?.lumpMonthly}
+            onChange={(v) => setHolding({ lumpMonthly: v })} />
+        )}
+
+        <div className="mt-3 text-xs text-vx-muted">
+          {projMonths > 0
+            ? <>Project duration: <strong>{projMonths} months</strong> (from timeline phases — update in the Progress tab).</>
+            : <>Add timeline phases in the Progress tab to auto-compute the holding period.</>
+          }
+        </div>
+
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {holdingCost == null
+            ? <A2Badge tone="unknown">Unknown — enter to unlock engine</A2Badge>
+            : <span className="text-xs font-mono font-semibold text-vx-positive">
+                {fmtGBP(holdingCost)}
+                {holdingMonthlyRate(v2.holding) != null && projMonths > 0 && (
+                  <span className="text-vx-muted font-normal ml-1">
+                    ({projMonths} mo × {fmtGBP(holdingMonthlyRate(v2.holding))}/mo)
+                  </span>
+                )}
+              </span>
+          }
+        </div>
+      </A2Card>
+
+      {/* ── Other cost lines ─────────────────────────────────────────────── */}
+      <A2Card>
+        <A2Section title="Other cost lines">
           {nullLineCount > 0 && (
             <div className="text-xs text-vx-caution flex items-center gap-1 mb-2">
               <Info size={12} /> Incomplete — {nullLineCount} unknown cost line{nullLineCount !== 1 ? "s" : ""}. Cannot produce a Pass verdict until all costs are entered.
@@ -562,9 +787,10 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
               <Plus size={12} /> Add cost line
             </button>
             <span className={`text-xs font-mono font-semibold ${nullLineCount > 0 ? "text-vx-caution" : "text-vx-positive"}`}>
-              {nullLineCount > 0 ? `Incomplete (${nullLineCount} unknown)` : fmtGBP(costsSummary.total)}
+              {nullLineCount > 0 ? `Incomplete (${nullLineCount} unknown)` : fmtGBP((v2.costLines || []).reduce((s, l) => s + (l.amount || 0), 0))}
             </span>
           </div>
+          <p className="text-xs text-vx-muted mt-1">Miscellaneous costs not covered by legal, refurb, or holding above. Avoid double-counting items already entered in the structured sections.</p>
         </A2Section>
       </A2Card>
 
@@ -637,16 +863,7 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
                 placeholder="0" onChange={(v) => setBridgeSrc({ admin: v })} />
             </div>
 
-            {/* Toggle: use computed finance in engine */}
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-vx-text">
-              <input type="checkbox" checked={!!v2.useComputedFinance}
-                onChange={(e) => setV2({ useComputedFinance: e.target.checked })}
-                className="w-3.5 h-3.5 accent-vx-accent" />
-              Use computed finance cost ({fmtGBP(bridgeCalc?.financeCost)}) in max-offer engine
-              <A2Illustrative />
-            </label>
-
-            {/* Bridge calculator outputs */}
+            {/* Bridge calculator outputs — finance cost always included in engine when a source is configured */}
             {bridgeCalc ? (
               <div className="space-y-3 pt-2 border-t border-vx-divider">
                 <h5 className="text-xs font-semibold text-vx-muted uppercase tracking-wide">Bridging calculator</h5>
@@ -881,25 +1098,6 @@ export default function AppraisalV2Tab({ deal, onChange, settings, v1Appraisal }
                 </div>
               ))}
             </div>
-          </A2Section>
-        </A2Card>
-      )}
-
-      {/* ── v1 comparison ───────────────────────────────────────────────── */}
-      {settings?.appraisal?.showV1Comparison !== false && v1Appraisal && (
-        <A2Card>
-          <A2Section title="v1 vs v2 comparison">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <A2KPI label="v1 max bid (locked)" value={fmtGBP(deal.maxBid)}
-                sub={deal.maxBidLocked ? "Locked" : "Not locked"} />
-              <A2KPI label="v2 max price" value={fmtGBP(split?.price)} />
-              <A2KPI label="Difference"
-                value={split?.price != null && deal.maxBid != null ? fmtGBP(split.price - deal.maxBid) : "—"}
-                tone={split?.price != null && deal.maxBid != null ? (split.price > deal.maxBid ? "good" : split.price < deal.maxBid ? "bad" : "default") : "default"} />
-            </div>
-            <p className="text-xs text-vx-muted mt-2">
-              v1 uses compound bridge interest; v2 uses simple. See CHANGELOG.md for details.
-            </p>
           </A2Section>
         </A2Card>
       )}

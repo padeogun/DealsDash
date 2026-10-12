@@ -1400,7 +1400,7 @@ function FundingPlannerView({ deal, onChange, settings, defaultBuyBox }) {
   );
 }
 
-const DEAL_TABS = ["Property & comps", "Appraisal v2", "Purchase & funding", "Funding Planner", "Refurb", "Timeline & holding", "Returns & rental", "Risk", "Simulate", "AI review", "Legal pack", "Viewing survey", "Decision Brief"];
+const DEAL_TABS = ["Property", "Appraisal", "Finance", "Returns", "Progress", "Decision", "Legal"];
 
 function _DealHeadlineStrip({ deal, base, verdict, defaultBuyBox }) {
   const isBrrr = deal.fundingMode === "mortgage";
@@ -1711,7 +1711,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         ))}
       </div>
 
-      {subTab === "Property & comps" && (
+      {subTab === "Property" && (
         <Card className="space-y-4">
           <SectionTitle>Subject property</SectionTitle>
           <div className="grid md:grid-cols-3 gap-3">
@@ -1794,7 +1794,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         </Card>
       )}
 
-      {subTab === "Purchase & funding" && (
+      {subTab === "Finance" && (
         <Card className="space-y-4">
           <SectionTitle>Purchase</SectionTitle>
           <div className="grid md:grid-cols-3 gap-3">
@@ -1830,127 +1830,11 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         </Card>
       )}
 
-      {subTab === "Purchase & funding" && (
-        <Card className="space-y-3">
-          <SectionTitle>Maximum bid</SectionTitle>
-          <p className="text-xs text-vx-muted">The highest purchase price at which profit still hits target, solved against a conservative GDV (the 25th-percentile £/sq ft from your comps, not the average) — since SDLT and bridge interest both change with price, this can't be worked out by simple subtraction.</p>
-          <div className="grid md:grid-cols-2 gap-3">
-            <NumField label="Target profit" value={targetProfitInput} onChange={setTargetProfitInput} testId="target-profit-input" disabled={deal.maxBidLocked} />
-            <div>
-              <span className="block text-xs font-medium text-vx-muted mb-1">Guide price (reference only)</span>
-              <div className="text-sm font-mono py-1.5">{fmtGBP(deal.price)}</div>
-            </div>
-            <PctField label="Buyer's premium (%)" value={deal.buyersPremiumPct} onChange={(v) => set("buyersPremiumPct", v)} step={0.5} testId="buyers-premium-pct" />
-            <PctField label="Bid buffer — safety margin (%)" value={deal.bidBufferPct} onChange={(v) => set("bidBufferPct", v)} step={0.5} testId="bid-buffer-pct" />
-          </div>
-          <button data-testid="solve-maxbid" onClick={runSolveMaxBid} disabled={deal.maxBidLocked} className="flex items-center gap-1.5 bg-navy text-white text-sm font-medium px-4 py-2 rounded hover:bg-navy/90 disabled:opacity-40 disabled:cursor-not-allowed w-fit">
-            <Sparkles size={14} />Solve max bid
-          </button>
-          {deal.maxBidLocked && <div className="text-xs text-vx-muted">Locked — unlock to change the target profit or re-solve.</div>}
-
-          {deal.maxBid != null && (
-            <div className="bg-vx-surface rounded-lg border border-vx-divider p-4 space-y-3">
-              {/* Recommended bid — primary headline */}
-              <div className="text-center">
-                <div className="text-xs font-semibold uppercase tracking-widest text-vx-accent mb-1">Recommended bid</div>
-                <div data-testid="maxbid-safe-value" className="text-5xl font-mono font-bold text-vx-accent-strong leading-none">{fmtGBP(deal.maxBidSafe ?? deal.maxBid)}</div>
-                {deal.maxBidSafe != null && deal.maxBidSafe !== deal.maxBid && (
-                  <div className="text-xs text-vx-muted mt-1">includes {fmtPct(deal.bidBufferPct ?? 0.02)} safety buffer below ceiling</div>
-                )}
-              </div>
-              {/* Breakdown */}
-              <div className="border-t border-vx-divider pt-3 space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-vx-muted">Ceiling (max bid, before buffer)</span>
-                  <span data-testid="maxbid-value" className="font-mono font-semibold text-vx-text">{fmtGBP(deal.maxBid)}</span>
-                </div>
-                {(Number(deal.buyersPremiumPct) || 0) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-vx-muted">Buyer's premium ({fmtPct(deal.buyersPremiumPct)}) — included in solver</span>
-                    <span className="font-mono text-vx-muted">baked in ✓</span>
-                  </div>
-                )}
-                {deal.maxBidSafe != null && deal.maxBidSafe !== deal.maxBid && (
-                  <div className="flex justify-between">
-                    <span className="text-vx-muted">Buffer deducted ({fmtPct(deal.bidBufferPct ?? 0.02)})</span>
-                    <span className="font-mono text-vx-negative">−{fmtGBP(round2(deal.maxBid - deal.maxBidSafe))}</span>
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-vx-muted">{deal.maxBidSolveNote || `At the ceiling, profit meets your ${fmtGBP(targetProfitInput)} target using a conservative GDV. Bid no higher than the recommended figure.`}</div>
-              {deal.maxBidGdvLow != null && (
-                <div className="text-xs text-vx-muted flex items-center gap-2 flex-wrap border-t border-vx-divider pt-2">
-                  <span data-testid="maxbid-gdvlow">Conservative GDV assumed: <b>{fmtGBP(deal.maxBidGdvLow)}</b></span>
-                  <button data-testid="apply-gdvlow" onClick={() => set("gdvOverride", deal.maxBidGdvLow)} className="text-vx-accent underline">Use this as the deal's GDV override</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            {!deal.maxBidLocked && deal.maxBid != null && (
-              <button data-testid="lock-maxbid" onClick={attemptLock} className="flex items-center gap-1.5 text-sm font-medium text-vx-accent hover:underline">
-                <ShieldCheck size={14} />Lock this figure
-              </button>
-            )}
-            {deal.maxBidLocked && (
-              <button data-testid="unlock-maxbid" onClick={unlockMaxBid} className="flex items-center gap-1.5 text-sm font-medium text-vx-caution hover:underline">
-                <RefreshCw size={14} />Unlock to re-solve
-              </button>
-            )}
-          </div>
-
-          {lockConfirm && (
-            <div data-testid="lock-confirm" className="bg-amber-50 text-vx-caution border border-amber-200 rounded px-3 py-2 space-y-2 text-sm">
-              <div>This figure is {fmtGBP(lockConfirm.delta)} higher than your previous locked max bid of {fmtGBP(lockConfirm.priorLocked)}. Maximum bid can only move down normally — unlock to re-solve from new evidence. Confirm you want to accept this higher figure?</div>
-              <div className="flex gap-3">
-                <button data-testid="confirm-higher-lock" onClick={confirmHigherLock} className="text-xs font-medium text-vx-caution underline">Confirm higher figure</button>
-                <button onClick={() => setLockConfirm(null)} className="text-xs font-medium text-vx-muted underline">Cancel</button>
-              </div>
-            </div>
-          )}
-
-          {(deal.maxBidLog || []).length > 0 && (
-            <div className="text-xs text-vx-muted space-y-0.5">
-              {[...deal.maxBidLog].reverse().slice(0, 8).map((e, i) => (
-                <div key={i}>{new Date(e.at).toLocaleString("en-GB")} — {e.action}: {fmtGBP(e.to)} ({e.reason})</div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {subTab === "Funding Planner" && (
+      {subTab === "Finance" && (
         <FundingPlannerView deal={deal} onChange={onChange} settings={settings} defaultBuyBox={defaultBuyBox} />
       )}
 
-      {subTab === "Refurb" && (
-        <Card className="space-y-3">
-          <SectionTitle>Schedule of works</SectionTitle>
-          <div className="space-y-2">
-            {deal.refurbItems.map((it, i) => (
-              <div key={i} className="grid grid-cols-3 gap-2 items-end">
-                <TextField label={i === 0 ? "Item" : ""} value={it.name} onChange={(v) => setNested("refurbItems", i, "name", v)} />
-                <NumField label={i === 0 ? "Low" : ""} value={it.low} onChange={(v) => setNested("refurbItems", i, "low", v)} />
-                <NumField label={i === 0 ? "High" : ""} value={it.high} onChange={(v) => setNested("refurbItems", i, "high", v)} />
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={() => onChange({ refurbItems: [...deal.refurbItems, { name: "New item", low: 0, high: 0 }] })}
-            className="flex items-center gap-1 text-sm text-vx-accent font-medium hover:underline"
-          ><Plus size={14} />Add line item</button>
-          <div><PctField label="Contingency %" value={deal.contingencyPct} onChange={(v) => set("contingencyPct", v)} />{overrideMark("refurbContingencyPct", deal.contingencyPct)}</div>
-          <div className="flex flex-wrap gap-4 text-sm font-mono bg-vx-surface rounded px-3 py-2">
-            <span>Subtotal: <b>{fmtGBP(base.funding.refurb.subtotal)}</b></span>
-            <span>Contingency: <b>{fmtGBP(base.funding.refurb.contingency)}</b></span>
-            <span>Total refurb budget: <b>{fmtGBP(base.funding.refurb.total)}</b></span>
-            <span>£/sq ft: <b>{deal.floorArea ? fmtGBP(base.funding.refurb.total / deal.floorArea) : "—"}</b></span>
-          </div>
-        </Card>
-      )}
-
-      {subTab === "Timeline & holding" && (
+      {subTab === "Progress" && (
         <Card className="space-y-3">
           <SectionTitle>Project phases</SectionTitle>
           <div className="space-y-2">
@@ -1973,7 +1857,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         </Card>
       )}
 
-      {subTab === "Returns & rental" && (
+      {subTab === "Returns" && (
         <Card className="space-y-4">
           <SectionTitle>Selling costs</SectionTitle>
           <div className="grid md:grid-cols-3 gap-3">
@@ -2023,7 +1907,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         </Card>
       )}
 
-      {subTab === "Risk" && (
+      {subTab === "Returns" && (
         <>
           <AreaIntelligencePanel postcode={deal.postcode} cached={deal.areaIntelligence} onChange={(r) => onChange({ areaIntelligence: r })} epcCached={deal.epcCheck} onEpcChange={(r) => onChange({ epcCheck: r })} marketStats={marketStats} propertyType={deal.propertyType} construction={deal.construction} onConstructionChange={(r) => onChange({ construction: r })} />
           <Card className="space-y-3">
@@ -2053,7 +1937,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         </>
       )}
 
-      {subTab === "Simulate" && (
+      {subTab === "Decision" && (
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <SectionTitle icon={SlidersHorizontal}>What-if simulation</SectionTitle>
@@ -2098,9 +1982,9 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         </Card>
       )}
 
-      {subTab === "AI review" && <AiReviewPanel deal={deal} metrics={base} />}
+      {subTab === "Decision" && <AiReviewPanel deal={deal} metrics={base} />}
 
-      {subTab === "Legal pack" && (
+      {subTab === "Legal" && (
         <LegalPackSection
           documents={deal.legalPackDocuments}
           onChange={(docs) => onChange({ legalPackDocuments: docs })}
@@ -2111,7 +1995,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         />
       )}
 
-      {subTab === "Viewing survey" && (
+      {subTab === "Progress" && (
         <SurveyModule
           deal={deal}
           rates={surveyRates || defaultRates()}
@@ -2122,12 +2006,12 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
         />
       )}
 
-      {subTab === "Decision Brief" && (
+      {subTab === "Decision" && (
         <DecisionBriefView deal={deal} defaultBuyBox={defaultBuyBox} ownerUid={ownerUid} />
       )}
 
-      {subTab === "Appraisal v2" && (
-        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} v1Appraisal={base} />
+      {subTab === "Appraisal" && (
+        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} />
       )}
 
       <Card>
