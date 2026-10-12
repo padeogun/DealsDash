@@ -176,6 +176,53 @@ describe("migrateV2Deal — no GDV, no comps", () => {
   });
 });
 
+// ── Deal migration — lead promotion path (estResaleLow / estResaleHigh) ──────
+
+describe("migrateV2Deal — lead promotion, low/high range", () => {
+  // Simulates a deal created via leadToDealPartial: has both resale estimates
+  // and bridge defaults from newDealFromBuyBox, no v2 block.
+  const promoted = {
+    id: "promo1",
+    estResaleLow: 130000, estResaleHigh: 160000,
+    gdvOverride: 145000,  // midpoint also set by leadToDealPartial
+    refurbItems: [{ name: "Estimated refurb (from lead)", low: 18000, high: 18000 }],
+    bridgeLTV: 0.75, bridgeMonthlyRate: 0.0085, arrangementPct: 0.02, exitPct: 0.01,
+    interestMode: "retained", fundingMode: "bridge", btlLtv: 0.75,
+  };
+  const r = migrateV2Deal(promoted);
+
+  it("worst = estResaleLow (not gdvOverride midpoint)", () => expect(r.v2.valuation.worst).toBe(130000));
+  it("best = estResaleHigh", () => expect(r.v2.valuation.best).toBe(160000));
+  it("mid = average of low and high", () => expect(r.v2.valuation.mid).toBe(145000));
+  it("singlePoint false — distinct low/high", () => expect(r.v2.valuation.singlePoint).toBe(false));
+  it("bridge source pre-filled from deal v1 fields", () => {
+    expect(r.v2.funding.sources[0].type).toBe("bridge");
+    expect(r.v2.funding.sources[0].ltvPct).toBe(0.75);
+  });
+  it("refinance.ltv pre-filled from btlLtv", () => expect(r.v2.refinance.ltv).toBe(0.75));
+});
+
+describe("migrateV2Deal — lead promotion, single-point estimate", () => {
+  const deal = { id: "sp1", estResaleLow: 150000, estResaleHigh: 150000, refurbItems: [] };
+  const r = migrateV2Deal(deal);
+  it("singlePoint true when low === high", () => expect(r.v2.valuation.singlePoint).toBe(true));
+  it("worst = low when both equal", () => expect(r.v2.valuation.worst).toBe(150000));
+});
+
+describe("migrateV2Deal — lead promotion, only high estimate entered", () => {
+  const deal = { id: "h1", estResaleLow: 0, estResaleHigh: 150000, refurbItems: [] };
+  const r = migrateV2Deal(deal);
+  it("worst = high when only high given", () => expect(r.v2.valuation.worst).toBe(150000));
+  it("singlePoint true (single value)", () => expect(r.v2.valuation.singlePoint).toBe(true));
+});
+
+describe("migrateV2Deal — lead promotion priority over gdvOverride", () => {
+  // estResaleLow/High take priority; gdvOverride is ignored when range is present
+  const deal = { id: "pri1", estResaleLow: 120000, estResaleHigh: 140000, gdvOverride: 200000, refurbItems: [] };
+  const r = migrateV2Deal(deal);
+  it("worst is estResaleLow, not gdvOverride", () => expect(r.v2.valuation.worst).toBe(120000));
+});
+
 // ── migrationSummary ──────────────────────────────────────────────────────────
 
 describe("migrationSummary", () => {

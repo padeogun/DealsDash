@@ -33,7 +33,7 @@ import SurveyModule from "./modules/survey/SurveyModule.jsx";
 import { defaultRates } from "./modules/survey/data/rates.js";
 import { mergeRefurbItems } from "./modules/survey/lib/applyToDeal.js";
 import { Badge as VxBadge } from "./components/Badge.jsx";
-import { emptyV2Block, DEFAULT_APPRAISAL_SETTINGS } from "./lib/migrations/v2.js";
+import { emptyV2Block, DEFAULT_APPRAISAL_SETTINGS, migrateV2Deal } from "./lib/migrations/v2.js";
 import WorkspaceView from "./components/WorkspaceView.jsx";
 import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
@@ -3475,6 +3475,9 @@ function leadToDealPartial(lead) {
     propertyType: lead.propertyType,
     price: Number(lead.guidePrice) || 0,
     gdvOverride: midResale,
+    // Carry through the raw resale range so migrateV2Deal can set proper worst/mid/best
+    estResaleLow:  Number(lead.estResaleLow)  || 0,
+    estResaleHigh: Number(lead.estResaleHigh) || 0,
     fees: { solicitor: 1400, searches: 350, survey: 600, broker: 1200, valuation: 450, landReg: 270, other: (Number(lead.estLegalFinance) || 200) + auctionFeesTotal },
     refurbItems: [{ name: "Estimated refurb (from lead — replace with trade-by-trade)", low: Number(lead.estRefurb) || 0, high: Number(lead.estRefurb) || 0 }],
     completionDays: Number(lead.completionDays) || 28,
@@ -6173,7 +6176,11 @@ function AppInner({ user }) {
     if (selectedId === id) setSelectedId(null);
   }
   function promoteLeadToDeal(dealPartial) {
-    const d = { ...newDealFromBuyBox(defaultBuyBox), ...dealPartial };
+    const base = { ...newDealFromBuyBox(defaultBuyBox), ...dealPartial };
+    // Strip the empty v2 block so migrateV2Deal runs the full v1→v2 pre-fill,
+    // using estResaleLow/High (proper worst/mid/best), refurbItems, bridgeLTV, btlLtv.
+    const { v2: _empty, ...baseWithoutV2 } = base;
+    const d = migrateV2Deal(baseWithoutV2);
     setDeals([d, ...deals]);
     setSelectedId(d.id);
     setTab("deals");

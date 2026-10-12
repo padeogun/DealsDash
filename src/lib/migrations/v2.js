@@ -148,8 +148,26 @@ export function emptyV2Block() {
 
 // ── Pre-fill helpers ───────────────────────────────────────────────────────────
 
-/** Map v1 GDV/comps to a v2 valuation object. Single GDV → singlePoint:true. */
+/**
+ * Map v1 GDV/comps to a v2 valuation object.
+ * Priority: estResaleLow/High (lead promotion) → gdvOverride (single point) → comps.
+ * Using low as worst preserves worst-case discipline when a range is known (RULE 9).
+ */
 function prefillValuation(deal) {
+  const low  = Number(deal.estResaleLow)  || 0;
+  const high = Number(deal.estResaleHigh) || 0;
+  if (low > 0 || high > 0) {
+    const eLow  = low  > 0 ? low  : high;
+    const eHigh = high > 0 ? high : low;
+    return {
+      best:        eHigh,
+      mid:         Math.round((eLow + eHigh) / 2),
+      worst:       eLow,
+      basis:       "worst",
+      comparables: [],
+      singlePoint: eLow === eHigh,
+    };
+  }
   const gdv = Number(deal.gdvOverride) || 0;
   if (gdv > 0) {
     return { best: gdv, mid: gdv, worst: gdv, basis: "worst", comparables: [], singlePoint: true };
