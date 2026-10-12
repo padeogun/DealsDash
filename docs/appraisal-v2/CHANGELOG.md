@@ -1,5 +1,26 @@
 # Appraisal v2 — Changelog
 
+## Phase A2 — 7-tab restructure + structured cost entry · 12 October 2026
+
+### Changed
+- Deal detail tabs consolidated from 13 → 7: **Property, Appraisal, Finance, Returns, Progress, Decision, Legal**
+- Max bid solver tab removed (v2 Appraisal replaces it); Refurb tab removed (data now in Appraisal)
+- Merges: Finance = purchase details + Funding Planner; Returns = selling/flip + area risk; Progress = timeline/holding + survey; Decision = simulate + AI review + brief
+- `useComputedFinance` checkbox removed — bridge finance cost always included when a source is configured
+- v1 vs v2 comparison card removed from AppraisalV2Tab; `v1Appraisal` prop dropped
+- Structured cost entry UI added to Appraisal tab: legal, refurb, and holding each have a lump/detail toggle with inline totals (RULE 7: null shown as "Unknown", not 0)
+
+### Phase A1 — Structured cost model · 12 October 2026
+
+### Added
+- `bridgeLump(financeCostLump)` in `src/lib/appraisal/bridging.js` — lump finance cost path returning same shape as `bridgeRelease()`
+- `legal`, `refurb`, `holding` structured sub-blocks in `emptyV2Block()` (lump/detail mode each)
+- `legalTotal()`, `refurbTotal()`, `holdingMonthlyRate()`, `holdingCostLine()`, `totalProjectMonths()` in `src/lib/appraisal/costs.js`
+- `migrateV2Deal()` v2→v3 additive upgrade path — adds missing sub-blocks to deals that already have a v2 block (RULE 14)
+- 40 golden tests in `src/lib/appraisal/__tests__/a1-costs.test.js`; 26 migration tests updated in `src/lib/migrations/v2.test.js`
+
+---
+
 ## P10 — Verify & Release · 10 October 2026
 
 ### What's new for you (plain English)
