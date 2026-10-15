@@ -503,9 +503,9 @@ const SECTIONS = [
   },
   {
     id: "dealdetail",
-    title: "Deal detail — all twelve tabs",
+    title: "Deal detail — seven tabs",
     icon: Building2,
-    terms: "deal detail tabs property comps comparables floor area gdv condition adjustment purchase funding price sdlt stamp duty additional property own cash bridge ltv monthly rate arrangement exit fee funding planner cash bridge bridging brrr mortgage icr interest coverage retained serviced flip profit money left in cash released refurb refurbishment trades contingency timeline holding phases weeks months returns rental yield void management maintenance insurance btl remortgage refi risk score weighted factors crime social housing income population demand liquidity flood school simulate what if max bid decision brief buy watch pass legal pack red flag viewing survey apply survey epc compliance",
+    terms: "deal detail tabs property comps comparables floor area gdv condition adjustment appraisal v2 valuation worst mid best case flip brrr strategy toggle playbook badge walk-away tests value costs refinance cashflow resilience verdict bar pass warn fail incomplete fragility stress break-even headroom strategy verdict worst-case basis profit target profitPct max bid flip budget split price sdlt legal pack costs refurb holding cost lines null unknown incomplete finance purchase price stamp duty additional property bridge ltv monthly rate arrangement exit fee cash bridging mortgage icr interest coverage retained serviced flip profit money left in cash released refurbishment trades contingency returns rental yield void management maintenance insurance btl remortgage refi progress timeline holding phases weeks months decision brief buy watch pass risk register score weighted factors crime social housing income population demand liquidity flood school legal pack red flag epc compliance per-deal threshold override",
   },
   {
     id: "playbooks",
@@ -565,7 +565,7 @@ const SECTIONS = [
     id: "glossary",
     title: "Glossary — terms, abbreviations & definitions",
     icon: Library,
-    terms: "glossary terms abbreviations definitions annualised roi arrangement fee ast assured shorthold tenancy bridge loan bridging brrr buy refurbish refinance rent btl buy to let buy box capital base cash in cash released comps comparables completion conveyancing decision brief deposit dscr ea estate agent environment agency eicr electrical epc energy performance certificate exchange exit fee free cash freehold funding gap gas safety cp12 gating question gdv gross development value guide price hammer price hmo house in multiple occupation holding costs hpi house price index icr interest coverage ratio imd index multiple deprivation land registry lbtt ltt leasehold legal pack lsoa ltv loan to value max bid mees money left in net profit open questions pipr playbook prs profit on cost red flag refinance refi retained interest right to rent roi runway sdlt stamp duty section 8 section 21 serviced interest stress rate title register triage verdict vixiv void period",
+    terms: "glossary terms abbreviations definitions annualised roi arrangement fee ast assured shorthold tenancy break-even headroom bridge loan bridging brrr buy refurbish refinance rent btl buy to let buy box capital base cash in cash released comps comparables completion conveyancing decision brief deposit dscr ea estate agent environment agency eicr electrical epc energy performance certificate exchange exit fee fragility appraisal stress free cash freehold funding gap gas safety cp12 gating question gdv gross development value guide price hammer price hmo house in multiple occupation holding costs hpi house price index icr interest coverage ratio imd index multiple deprivation land registry lbtt ltt leasehold legal pack lsoa ltv loan to value max bid mees money left in net profit open questions pipr playbook prs profit on cost red flag refinance refi retained interest right to rent roi runway sdlt stamp duty section 8 section 21 serviced interest stress rate strategy verdict title register triage verdict vixiv void period walk-away tests worst-case basis",
   },
 ];
 
@@ -579,7 +579,7 @@ function OverviewContent({ query }) {
       <ol className="list-decimal list-inside space-y-1 text-vx-muted">
         <li><span className="text-vx-text font-medium">Screen</span> — use Area Screener to rank 300+ UK councils by yield, growth, and flip evidence</li>
         <li><span className="text-vx-text font-medium">Source</span> — track leads in the Pipeline, run triage questions, review legal packs</li>
-        <li><span className="text-vx-text font-medium">Appraise</span> — open a Deal, fill in the twelve tabs, read the Decision Brief</li>
+        <li><span className="text-vx-text font-medium">Appraise</span> — open a Deal, fill in the seven tabs, read the Decision Brief</li>
         <li><span className="text-vx-text font-medium">Manage</span> — move completed deals to the rental portfolio, track compliance and BRRR readiness</li>
       </ol>
       <Callout tone="info">
@@ -707,10 +707,10 @@ function DealsContent({ query }) {
 function DealDetailContent({ query }) {
   return (
     <>
-      <p>Each deal has twelve tabs. Fill them left to right for a complete appraisal.</p>
+      <p>Each deal has seven tabs. Fill them left to right for a complete appraisal.</p>
 
       <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 1 — Property &amp; comps</p>
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 1 — Property</p>
         <FieldList query={query} items={[
           ["Address / postcode",     "Full address and postcode. Postcode triggers IMD lookup and price momentum pill."],
           ["Property type",          "Terrace, Semi, Detached, or Flat. Used in buy box gate check."],
@@ -725,22 +725,79 @@ function DealDetailContent({ query }) {
       </div>
 
       <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 2 — Purchase &amp; funding</p>
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 2 — Appraisal</p>
+        <p className="text-vx-muted">The structured appraisal engine. Combines a valuation, cost build-up, and five walk-away tests to produce a strategy-filtered verdict before you bid.</p>
+
+        <p className="font-medium text-vx-text mt-2">Strategy &amp; Playbook</p>
+        <FieldList query={query} items={[
+          ["Strategy toggle",   "Flip (sell on completion) or BRRR (refinance and hold). Controls which walk-away tests are active and the max-bid formula."],
+          ["Playbook badge",    "Shows which buy box is driving the threshold defaults for this deal. Override any field to apply a per-deal figure — a warning badge appears when a strategy differs from the Playbook."],
+        ]} />
+
+        <p className="font-medium text-vx-text mt-2">Valuation — worst / mid / best</p>
+        <FieldList query={query} items={[
+          ["Worst-case (default)", "The appraisal uses worst-case value as the safe default. Mid and best are context — they do not affect the verdict unless you explicitly change the basis."],
+          ["Single-point warning", "If only one value is entered with no comparables, the value test shows a warning. Three comparables with floor area is the minimum for a confident GDV."],
+        ]} />
+
+        <p className="font-medium text-vx-text mt-2">Costs</p>
+        <FieldList query={query} items={[
+          ["Legal pack costs",   "Cost lines auto-mapped from the Legal tab's AI review. Lines with an unknown amount show 'Unknown' and block a Pass verdict (null is not zero — Rule 7)."],
+          ["Refurb",             "Single lump sum or detail lines from the Progress tab refurb section."],
+          ["Holding costs",      "Monthly holding × estimated hold period."],
+          ["Additional lines",   "Enter any cost not covered above (buyer's premium, survey, etc.)."],
+        ]} />
+        <Callout tone="warn">Any cost line with an unknown (null) amount blocks a Pass verdict. Enter a figure or mark it as deliberately excluded before the appraisal can clear.</Callout>
+
+        <p className="font-medium text-vx-text mt-2">Flip outputs (strategy = Flip)</p>
+        <FieldList query={query} items={[
+          ["Flip budget",   "Maximum total spend (purchase + SDLT + all costs) that still delivers your profit target: GDV × (1 − profit %) − refurb − legals."],
+          ["Max bid",       "Purchase price portion of the budget — what you can bid at auction after SDLT is solved out."],
+          ["SDLT",          "Stamp duty calculated from the solved purchase price (England, company buyer). Scotland and Wales show 'unsupported'."],
+        ]} />
+
+        <p className="font-medium text-vx-text mt-2">Walk-away tests</p>
+        <FlagTable query={query} rows={[
+          ["Value",       "Checks: ≥ 3 comparables, no single-point valuation, worst-case value entered",        "All checks pass"],
+          ["Costs",       "Checks: all cost lines have amounts — no nulls/unknowns",                             "All costs known"],
+          ["Refinance",   "BRRR only — break-even headroom ≥ threshold; lender route recorded (AIP)",          "Headroom positive, AIP in place"],
+          ["Cash flow",   "BRRR only — net monthly ≥ minimum; ICR passes at stress rate",                       "Net monthly ≥ £150; ICR ≥ 1.25×"],
+          ["Resilience",  "Stress test: −10% value AND +10% refurb — refinance still covers costs",             "Refi position remains positive"],
+        ]} />
+        <Callout tone="info">For a Flip strategy, only Value, Costs, and Resilience tests apply. Refinance and Cash flow are not relevant and are hidden from the verdict. The verdict bar shows which tests are active for the current strategy.</Callout>
+
+        <p className="font-medium text-vx-text mt-2">Verdict bar</p>
+        <FlagTable query={query} rows={[
+          ["INCOMPLETE",  "No valuation or costs entered yet — nothing to appraise",                   "Enter valuation to start"],
+          ["PASS",        "All strategy-relevant walk-away tests pass",                                "Target state before bidding"],
+          ["WARN",        "At least one relevant test warns (e.g. fewer than 3 comparables)",          "Resolve named warnings"],
+          ["FAIL",        "At least one relevant test fails (e.g. unknown cost, ICR shortfall)",       "Resolve before bidding"],
+        ]} />
+
+        <p className="font-medium text-vx-text mt-2">Per-deal threshold overrides</p>
+        <p className="text-vx-muted text-xs">Leave any override blank to use the Playbook default, then the Settings › Appraisal Thresholds default. Override fields show the Playbook value as placeholder so you can see exactly what you're changing.</p>
+        <FieldList query={query} items={[
+          ["Profit target %",      "Target profit as % of end value. Playbook → Settings default: 15%."],
+          ["ICR threshold",        "Lender ICR floor. Playbook → Settings default: 1.25×."],
+          ["Refinance LTV",        "BRRR exit refi loan-to-value. Playbook → Settings default: 75%."],
+          ["Max cash left in",     "BRRR quality gate — how much unrecovered capital is acceptable. Playbook → Settings default: £0."],
+          ["Min net monthly (£)",  "Minimum net monthly cash flow for the cash flow test. Settings default: £150."],
+          ["Min headroom %",       "Minimum break-even headroom for the refinance test. Settings default: 5%."],
+        ]} />
+      </div>
+
+      <div className="space-y-2">
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 3 — Finance</p>
+        <FundingPlannerMockup />
         <FieldList query={query} items={[
           ["Purchase price",         "Your intended bid. The entire cost stack moves with this."],
           ["Additional property?",   "Toggle on if not your only property — activates the additional SDLT surcharge bands (effective 31 Oct 2024)."],
           ["Own cash (£)",           "Your own money on day one. ROI = net profit ÷ own cash."],
           ["Bridge LTV %",           "Percentage of purchase price the bridge lender funds. Typically 70–75%."],
-          ["Bridge monthly rate %",  "Monthly interest rate (e.g. 0.85% = 0.0085). Most bridging is 0.7–1.0%/month."],
+          ["Bridge monthly rate %",  "Monthly interest rate (e.g. 0.85%). Most bridging is 0.7–1.0%/month."],
           ["Arrangement fee %",      "Bridge lender's upfront fee. Typically 1.5–2%."],
           ["Exit fee %",             "Bridge lender's exit fee on redemption. Typically 1%."],
-          ["Acquisition fees",       "Solicitor, searches, survey, broker, valuation, Land Reg, other. Pre-filled from buy box."],
         ]} />
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 3 — Funding Planner</p>
-        <FundingPlannerMockup />
         <FlagTable query={query} rows={[
           ["Cash in",            "Own cash required on completion day (price − bridge + SDLT + fees + refurb + arrangement ± interest)",  "Matches your available own cash"],
           ["Flip profit",        "Net sale proceeds − bridge redemption − cash in",                                                       "Positive; ideally ≥ £25k"],
@@ -756,30 +813,13 @@ function DealDetailContent({ query }) {
       </div>
 
       <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 4 — Refurb</p>
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 4 — Returns</p>
         <FieldList query={query} items={[
-          ["Trade line items",  "Eleven standard trades. Enter low and high quote for each trade you'll use; unused stay at zero."],
-          ["Contingency %",     "Added on top of the mid-point total. 15% is the buy box default — never below 10% for a major refurb."],
-          ["Refurb total",      "Mid-point of all trades plus contingency. Flows directly into the appraisal engine."],
+          ["Monthly rent (£)",          "Expected gross rent when let. Drives ICR and net cash flow."],
+          ["Management %",              "Letting agent fee as % of gross rent. Default 10%."],
+          ["Maintenance %",             "Reserve for repairs. Default 8%."],
+          ["Voids %",                   "Allowance for empty periods. Default 4% (~2–3 weeks/year)."],
         ]} />
-        <Callout tone="good">A well-filled refurb tab has actual builder quotes with low/high ranges and ≥ 15% contingency. Zero refurb total triggers a Decision Brief risk flag.</Callout>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 5 — Timeline &amp; holding</p>
-        <FieldList query={query} items={[
-          ["Offer to exchange",       "Conveyancing period. Typically 3–5 weeks."],
-          ["Exchange to completion",  "Typically 1–2 weeks."],
-          ["Refurbishment",           "Works programme. Derived from buy box 'Works months' if set."],
-          ["Marketing period",        "Derived from buy box 'Marketing months' if set."],
-          ["Sale to completion",      "Second conveyancing. Typically 4–8 weeks."],
-          ["Holding costs monthly",   "Council tax, insurance, utilities, other — multiplied by timeline months."],
-        ]} />
-        <Callout tone="warn">Bridge interest accrues for the full timeline. A 1-week overrun on a £200k bridge at 0.85%/month costs ~£392 extra.</Callout>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 6 — Returns &amp; rental</p>
         <FlagTable query={query} rows={[
           ["Gross yield",         "Annual rent ÷ GDV × 100%",                                          "≥ 6–7% for a strong BRRR deal"],
           ["Net cash flow/month", "NOI − annual mortgage payment ÷ 12",                                 "Positive; ideally ≥ £200/month after all deductions"],
@@ -788,56 +828,22 @@ function DealDetailContent({ query }) {
       </div>
 
       <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 7 — Risk</p>
-        <FlagTable query={query} rows={[
-          ["Score ≥ 4.0 → LOW RISK",    "Weighted average of all eight factors ≥ 4.0",          "Target for all active deals"],
-          ["Score 3.0–3.9 → MED RISK",  "Acceptable but monitor the named weak factors",         "Acceptable at 3.0+ minimum"],
-          ["Score < 3.0 → HIGH RISK",   "At least one major factor is very weak",                "Triggers a Dashboard alert"],
-        ]} />
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 5 — Progress</p>
         <FieldList query={query} items={[
-          ["Crime rate (20% weight)",           "Score 5 = very low crime vs national average."],
-          ["% social housing (15%)",            "Score 5 = minimal social housing on the street."],
-          ["Average household income (15%)",    "Score 5 = well above local average."],
-          ["Population growth trend (10%)",     "Score 5 = growing population / strong in-migration."],
-          ["Owner-occupier demand (20%)",       "Score 5 = strong evidence of owner-occupiers buying on the street. Highest weight — most predictive of exit speed."],
-          ["Liquidity — days on market (10%)",  "Score 5 = properties sell in < 30 days."],
-          ["Flood risk (5%)",                   "Score 5 = no flood risk zones within 3km."],
-          ["School catchment quality (5%)",     "Score 5 = outstanding Ofsted rating in catchment."],
+          ["Offer to exchange",       "Conveyancing period. Typically 3–5 weeks."],
+          ["Exchange to completion",  "Typically 1–2 weeks."],
+          ["Refurbishment",           "Works programme. Derived from buy box 'Works months' if set."],
+          ["Marketing period",        "Derived from buy box 'Marketing months' if set."],
+          ["Sale to completion",      "Second conveyancing. Typically 4–8 weeks."],
+          ["Holding costs monthly",   "Council tax, insurance, utilities, other — multiplied by timeline months."],
+          ["Refurb trades",           "Eleven standard trades. Enter low and high quote for each; contingency % added on top. Flows into Appraisal cost lines."],
+          ["Viewing survey",          "Tick items found on a physical viewing. 'Apply to deal' merges surveyed costs into the refurb trades."],
         ]} />
+        <Callout tone="warn">Bridge interest accrues for the full timeline. A 1-week overrun on a £200k bridge at 0.85%/month costs ~£392 extra.</Callout>
       </div>
 
       <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 8 — Simulate</p>
-        <p className="text-vx-muted">What-if overlay. Adjust price, GDV, bridge rate, refurb multiplier, and duration using sliders. Delta arrows show whether each change is better (▲ green) or worse (▼ red) vs the live deal. Changes are session-only — not saved.</p>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 9 — AI review</p>
-        <p className="text-vx-muted">Triggers a Cloud Function that populates: Area Intelligence (IMD decile, flood risk, EPC lookup), comparable sales from Land Registry Price Paid, buy box gate check, and risk factor pre-fills.</p>
-        <Callout tone="warn">Results are illustrative where the underlying data source is incomplete. Always cross-check with direct market observation before bidding.</Callout>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 10 — Legal pack</p>
-        <FlagTable query={query} rows={[
-          ["Pre-bid red flag",      "Blocks a BUY verdict on the Decision Brief until resolved",       "Zero pre-bid flags"],
-          ["Post-purchase flag",    "Worth noting but does not block the decision",                    "Review before exchange"],
-          ["Informational",         "Context only; no action required",                               "No concern"],
-        ]} />
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 11 — Viewing survey</p>
-        <FieldList query={query} items={[
-          ["Survey items",   "Tick/note what you find. Severity levels feed into cost estimates."],
-          ["Apply to deal",  "Stamps surveyed refurb costs onto the Refurb tab — merging survey lines with manually entered trades."],
-          ["Max bid re-solve","If max bid isn't locked, it re-solves automatically after 'Apply to deal'."],
-        ]} />
-        <Callout tone="good">Best practice: complete the viewing survey for every property you physically inspect, then immediately click "Apply to deal".</Callout>
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 12 — Decision Brief</p>
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 6 — Decision</p>
         <DecisionBriefMockup />
         <FlagTable query={query} rows={[
           ["PASS",  "Any of: gating Q answered No; unresolved legal pack red flag; outside buy box; profit on cost < minimum; ICR fails with debt strategy",  "No PASS conditions present"],
@@ -845,11 +851,22 @@ function DealDetailContent({ query }) {
           ["WATCH", "No PASS conditions but a soft condition unmet (e.g. net profit just below minimum)",                                                      "Resolve the named condition"],
         ]} />
         <FieldList query={query} items={[
-          ["Max bid solver",  "Bisects backward from your target profit to find the highest bid price at which profit still meets your minimum. Uses 25th-percentile GDV (conservative)."],
+          ["Max bid solver",  "Bisects backward from your target profit to find the highest bid price at which profit still meets your minimum. Uses worst-case GDV (conservative)."],
           ["Lock",            "Freezes the max bid figure. Requires explicit confirmation before a higher re-lock is accepted."],
           ["Risk register",   "Auto-generated from deal data: legal pack flags, EPC F/G, flood zones, missing refurb estimates."],
+          ["Risk score",      "Weighted average of eight area and asset factors (crime, social housing, income, population, demand, liquidity, flood, school). ≥ 4.0 = low risk; < 3.0 triggers a Dashboard alert."],
         ]} />
         <Callout tone="risk">If the max bid solver returns £0, your target profit is unachievable at any price — re-examine GDV, reduce refurb, or lower the profit target before bidding.</Callout>
+      </div>
+
+      <div className="space-y-2">
+        <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 7 — Legal</p>
+        <FlagTable query={query} rows={[
+          ["Pre-bid red flag",      "Blocks a BUY verdict on the Decision Brief until resolved",       "Zero pre-bid flags"],
+          ["Post-purchase flag",    "Worth noting but does not block the decision",                    "Review before exchange"],
+          ["Informational",         "Context only; no action required",                               "No concern"],
+        ]} />
+        <Callout tone="info">Cost lines from the legal pack AI review (buyer's premium, management fee, drainage search, etc.) are automatically mapped into the Appraisal tab's cost build-up. Any line with an unknown amount shows as 'Unknown' and blocks a Pass verdict until resolved.</Callout>
       </div>
     </>
   );
@@ -861,9 +878,13 @@ function PlaybooksContent({ query }) {
       <p>A Playbook (buy box) defines your investment criteria. The default buy box gates incoming leads automatically and pre-fills new deals.</p>
       <FieldList query={query} items={[
         ["Filters",       "Objective criteria: postcode areas/districts, property types, tenure, max guide price. Auto-reject new leads that fail."],
-        ["Assumptions",   "Financial defaults: bridge rates, fees, LTVs, timeline months, ICR stress rate, etc. Pre-filled into every new deal."],
+        ["Strategy",      "Flip or BRRR. Sets the default strategy for deals linked to this Playbook and determines which walk-away tests are active in the Appraisal tab."],
+        ["Assumptions",   "Financial defaults: bridge rates, fees, LTVs, timeline months, ICR stress rate, profit target %, max cash left in, management/maintenance/voids %. Pre-filled into every new deal — and used as appraisal threshold defaults when no per-deal override is set."],
         ["Thresholds",    "Decision Brief pass/fail thresholds: min net profit (£), min ROI %, min annualised ROI %, min risk score, profit-on-cost %."],
       ]} />
+      <Callout tone="info">
+        <span><strong>Three-tier priority chain (Appraisal tab):</strong> per-deal override → Playbook assumption → Settings › Appraisal Thresholds default. Override fields show the Playbook value as a placeholder so you can see exactly what you're changing. Leave blank to inherit from the Playbook.</span>
+      </Callout>
       <Callout tone="good">Review your buy box after every deal. If you consistently override the same assumption, update the buy box default so new deals start with the correct figure.</Callout>
     </>
   );
@@ -1053,6 +1074,7 @@ const GLOSSARY = [
   {
     letter: "B",
     entries: [
+      { term: "Break-even headroom", def: "The percentage gap between the end valuation and the break-even valuation — the minimum value at which the refinance loan exactly covers all costs. Calculated as (end value − break-even value) ÷ end value. The walk-away Refinance test fails if headroom is negative and warns if below 5%." },
       { term: "Bridge loan / Bridging finance", def: "A short-term secured loan (typically 6–18 months) used to fund a purchase or refurb before a long-term mortgage or sale proceeds are available. Rates are monthly (e.g. 0.75%/month). DealsDash supports retained and serviced interest modes." },
       { term: "Bridge redemption", def: "The total amount repaid to the bridge lender at exit: loan principal + retained interest + exit fee. Shown in the Funding Planner." },
       { term: "BRRR — Buy, Refurbish, Refinance, Rent", def: "A capital-recycling strategy: buy at a discount, add value through refurb, refinance at the new higher value (pulling most or all invested capital back out), then hold and rent. The BRRR exit tab in the Funding Planner shows money left in and cash released." },
@@ -1093,6 +1115,7 @@ const GLOSSARY = [
   {
     letter: "F",
     entries: [
+      { term: "Fragility (appraisal)", def: "A stress scenario embedded in the walk-away Resilience test: simultaneously apply −10% to end value and +10% to refurb cost. If the refinance position turns negative under these conditions, the Resilience test fails. Designed to surface deals that pass on paper but have no margin for error." },
       { term: "Free cash", def: "Capital base minus committed capital. The cash immediately available to deploy. Shown as a KPI on the Dashboard. Declining free cash signals over-commitment risk." },
       { term: "Freehold", def: "Ownership of the building and the land it stands on with no time limit. No ground rent or service charges to a freeholder. Preferred tenure for BRRR strategies." },
       { term: "Funding gap", def: "When total cash required (bridge deposit + fees + refurb + SDLT) exceeds your available own cash. Triggers a red badge on the deal card. The deal cannot proceed without additional capital." },
@@ -1196,8 +1219,16 @@ const GLOSSARY = [
     entries: [
       { term: "Verdict — PROCEED / CAUTION / REJECT", def: "The six-check quick appraisal shown on deal cards: profit, ROI, annualised ROI, risk score, funding gap, occupier demand. 0 fails = PROCEED (green); 1–2 fails = CAUTION (amber); 3+ fails = REJECT (red)." },
       { term: "Verdict — BUY / WATCH / PASS", def: "The three-tier Decision Brief verdict. PASS fires first on any hard fail (gating question, red flag, buy box miss, ICR fail, profit-on-cost below minimum). WATCH fires when soft conditions are unmet. BUY requires everything green." },
+      { term: "Verdict — PASS / WARN / FAIL / INCOMPLETE (Appraisal v2)", def: "The structured appraisal verdict shown in the Appraisal tab's verdict bar. INCOMPLETE = no valuation or costs yet. FAIL = at least one relevant walk-away test fails. WARN = at least one warns. PASS = all strategy-relevant tests pass. For a Flip strategy, Refinance and Cash flow tests are excluded." },
       { term: "VIXIV LTD", def: "The company that built and operates DealsDash. All deal data is stored in your own Firebase project under your Google account." },
       { term: "Void period", def: "Time a rental property sits empty between tenancies, expressed as a percentage of the year in the Returns tab. A 8.3% void = 1 month empty per year. Reduces effective annual rent and therefore ICR." },
+    ],
+  },
+  {
+    letter: "W",
+    entries: [
+      { term: "Walk-away tests", def: "Five structured checks in the Appraisal tab that must all pass before you commit to bidding: (1) Value — enough comparables, no single-point valuation; (2) Costs — no unknown cost lines; (3) Refinance — positive break-even headroom, lender route recorded; (4) Cash flow — net monthly positive, ICR passes; (5) Resilience — deal survives a −10% value / +10% refurb stress. Tests 3 and 4 are skipped for Flip strategies." },
+      { term: "Worst-case basis", def: "The appraisal always uses the worst-case (lowest) valuation as the safe default. Mid and best figures are entered for context but do not affect the verdict unless you explicitly switch the basis. This principle prevents optimistic valuations from inflating the max bid." },
     ],
   },
 ];

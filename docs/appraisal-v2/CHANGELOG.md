@@ -1,5 +1,19 @@
 # Appraisal v2 — Changelog
 
+## Phase E follow-up — User Guide update · 12 October 2026
+
+Updated `src/components/UserGuideView.jsx` to reflect the 7-tab deal structure introduced in Phase A2.
+
+### Changed
+- Overview step 3: "fill in the twelve tabs" → "seven tabs"
+- Section `dealdetail` title: "Deal detail — all twelve tabs" → "Deal detail — seven tabs"
+- `DealDetailContent` fully rewritten: documents 7 tabs (Property, Appraisal, Finance, Returns, Progress, Decision, Legal); includes dedicated Appraisal v2 section covering strategy toggle, Playbook badge, valuation triad, structured costs, flip outputs, five walk-away tests, verdict bar, and per-deal threshold overrides
+- `PlaybooksContent`: added three-tier priority chain explanation (per-deal override → Playbook → Settings) and new Strategy field description
+- Glossary: 5 new entries — Break-even headroom, Fragility (appraisal), Verdict PASS/WARN/FAIL/INCOMPLETE (Appraisal v2), Walk-away tests, Worst-case basis
+- Section `glossary` terms string updated with new keywords
+
+---
+
 ## Phase E — Terminology and labelling · 12 October 2026
 
 ### Changed (no logic or data changes — UI text only)

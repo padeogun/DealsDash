@@ -24,6 +24,12 @@ UPDATE_STEPS.md
 # OS / editor
 .DS_Store
 Thumbs.db
+desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Firebase debug logs
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
