@@ -98,7 +98,7 @@ export async function runMigrationIfNeeded(db, uid, onProgress) {
         );
       }
 
-      console.log("[DealsDash] Migration v2 complete.", before);
+      console.log("[DealsDash] Migration v2 complete. Deals migrated:", before?.deals?.length ?? "unknown");
     }
   }
 

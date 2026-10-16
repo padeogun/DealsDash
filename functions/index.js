@@ -430,6 +430,18 @@ function cleanStaleAuctionDates(leads) {
 const VALID_SELLER_TYPES = ["unknown", "receiver", "probate", "ha_council", "landlord_exit", "trader", "forced_speed"];
 const VALID_SIGNALS = ["late_entry", "no_viewings", "late_pack", "reduced", "prior_withdrawn", "prior_unsold"];
 
+// Strip any non-http(s) scheme from a URL string — prevents javascript: URIs
+// surviving into stored leads and being rendered as live hrefs in the client.
+function safeUrl(raw) {
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return (url.protocol === "https:" || url.protocol === "http:") ? raw : "";
+  } catch {
+    return "";
+  }
+}
+
 function sanitizeLeads(leads) {
   return leads.slice(0, 6).map((l) => ({
     address: String((l && l.address) || ""),
@@ -438,7 +450,7 @@ function sanitizeLeads(leads) {
     bedrooms: Number(l && l.bedrooms) || 0,
     availabilityConfirmed: (l && l.availabilityConfirmed === true),
     source: String((l && l.source) || "AI research pass"),
-    sourceUrl: String((l && l.sourceUrl) || ""),
+    sourceUrl: safeUrl(String((l && l.sourceUrl) || "")),
     guidePrice: Number(l && l.guidePrice) || 0,
     auctionDate: String((l && l.auctionDate) || ""),
     estRefurb: Number(l && l.estRefurb) || 0,

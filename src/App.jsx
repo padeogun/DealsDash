@@ -5299,7 +5299,7 @@ function LeadCard({ lead, onChange, onDelete, onVerify, verifying, verifyError, 
             <textarea value={lead.riskNotes} onChange={(e) => set("riskNotes", e.target.value)} rows={2} className="w-full text-sm border border-vx-border rounded p-2 outline-none focus:ring-2 focus:ring-vx-accent" placeholder="Auction guide can rise at hammer; confirm comps within 1 mile…" />
           </label>
 
-          {lead.sourceUrl && (
+          {lead.sourceUrl && /^https?:\/\//.test(lead.sourceUrl) && (
             <a href={lead.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-vx-accent hover:underline">
               <ExternalLink size={12} />Open source listing
             </a>

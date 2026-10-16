@@ -1,5 +1,66 @@
 # Appraisal v2 — Changelog
 
+## Phase P10 — Verify and Release · 16 October 2026
+
+### Release summary — what's new for Paul
+
+**Appraisal engine v2** is a complete rewrite of how DealsDash evaluates deals:
+
+- **Worst-case basis by default.** Every deal appraisal now starts from your lowest comparable value, not a midpoint. You can switch to mid or best for context, but the verdict always uses worst-case.
+- **Five walk-away tests.** Before you get a PASS, the deal must clear: minimum break-even headroom (5%), no unknown cost lines, at least one comparable, lender route selected, and bridging AIP recorded (for auction leads).
+- **Profit-first max offer.** Enter your target profit % and the engine works backwards to a maximum purchase price — including SDLT at company/additional-dwelling rates — so you never accidentally bid above your number.
+- **Four separate measures for BRRR.** Cash released, cash left in, equity, and monthly cash flow are shown as distinct outputs. Refinance proceeds are never counted as profit.
+- **Funding planner with ICR.** Model bridging + term lending with interest cover ratio check at 125% / 5.5% stressed rate. Tracks the £50k revolving fund drawdown and repayment across deals.
+- **Pipeline kanban.** Drag deals through stages; DD Gate dialog requires a recorded decision brief before moving to Offer.
+- **Decision briefs.** BUY / WATCH / PASS verdicts with reasoning, saved to Firestore, printable as PDF.
+- **Area signals.** IMD deprivation decile (postcodes.io) and price momentum sparkline (Land Registry SPARQL) on every deal.
+- **Viewing → offer → acceptance funnel.** Month-to-date vs target; agent performance table.
+- **Deal programme (P11).** 54-activity VIXIV flip schedule from deal secured to sale completed. List and Gantt views on the Progress tab; programme-based holding cost shown beside your manual figure for comparison.
+- **Auction bid sheet.** Finance-late, winter-external, and slow-listing-month flags derived from the auction date.
+- **Notifications.** Daily digest + instant alerts for DD gate moves, auction dates, and market stat refreshes.
+
+### Known limitations
+- Scotland (LBTT) and Wales (LTT) stamp duty — not calculated; shows "unsupported nation — calculate manually".
+- All thresholds (profit %, ICR, headroom, reserves) are tagged "Illustrative — verify" until you confirm them with your broker/accountant.
+- P08 (screen-before-view comparables ranking) is not built — skipped pending a suitable data source.
+- `deleteAllForUser` does not yet cascade-delete `programme/main` subcollections (tracked for P12).
+
+### Pre-flight status
+- ✓ P09 completed; no open High/Critical findings (SEC-02 accepted by Paul 2026-10-16)
+- ✓ 278/278 tests passing
+- ✓ Production build clean; no test artefacts in bundle
+- ✗ Fresh backup — **required before deploy** (run `node scripts/backup-firestore.js`)
+- ✗ Emulator smoke test — **required before deploy** (manual checklist below)
+
+### Smoke-test checklist (manual — Paul to verify)
+- [ ] Migration runs once on emulator data; `schemaVersion: 2` shown; all existing deals open
+- [ ] Flip deal shows max offer budget ≈ £110,800; SDLT split ≈ £5,276
+- [ ] BRRR deal shows budget ≈ £200,000; bridge release ≈ £63,350
+- [ ] One real auction lead runs to a bid sheet with max bid displayed
+- [ ] Deal Programme tab loads on a deal; List and Gantt views switch correctly
+- [ ] App loads and is usable at 375 px width (mobile)
+
+---
+
+## Phase P09 — Security Review · 16 October 2026
+
+17 items checked across P00–P11 scope. 3 fixes applied; 3 Low findings accepted; 1 High npm advisory deferred.
+
+### Fixed
+- **SEC-01 (Medium)** — `firebase.json`: added CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`
+- **SEC-06 (Low)** — `javascript:` URI injection in `lead.sourceUrl`: added `safeUrl()` helper in `functions/index.js` sanitizeLeads; added `/^https?:\/\//` guard on client-side href render in `src/App.jsx`
+- **SEC-07 (Low)** — `src/data/migrate.js`: removed full Firestore snapshot from `console.log`; replaced with deal count only
+
+### Accepted / deferred
+- **SEC-02 (High audit / Info runtime)** — `@grpc/grpc-js` transitive dep via `firebase` client SDK; not in browser bundle; only fix is a major breaking firebase downgrade — deferred to next Firebase SDK upgrade cycle
+- **SEC-03/04/05 (Low)** — rate limiting, input size cap, error message — acceptable in single-user auth-gated app
+- **SEC-08 (Info)** — `deleteAllForUser` doesn't cascade-delete `programme/main` — tracked for P12
+
+### Clear (no action)
+SEC-09 through SEC-17: Firestore rules, secrets, XSS, external links, storage rules, SSRF, webhook, test artefacts, CSV injection — all clear.
+
+---
+
 ## Phase P11 — Deal Programme · 16 October 2026
 
 ### Added
