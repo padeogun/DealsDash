@@ -505,7 +505,7 @@ const SECTIONS = [
     id: "dealdetail",
     title: "Deal detail — seven tabs",
     icon: Building2,
-    terms: "deal detail tabs property comps comparables floor area gdv condition adjustment appraisal v2 valuation worst mid best case flip brrr strategy toggle playbook badge walk-away tests value costs refinance cashflow resilience verdict bar pass warn fail incomplete fragility stress break-even headroom strategy verdict worst-case basis profit target profitPct max bid flip budget split price sdlt legal pack costs refurb holding cost lines null unknown incomplete finance purchase price stamp duty additional property bridge ltv monthly rate arrangement exit fee cash bridging mortgage icr interest coverage retained serviced flip profit money left in cash released refurbishment trades contingency returns rental yield void management maintenance insurance btl remortgage refi progress timeline holding phases weeks months decision brief buy watch pass risk register score weighted factors crime social housing income population demand liquidity flood school legal pack red flag epc compliance per-deal threshold override",
+    terms: "deal detail tabs property comps comparables floor area gdv condition adjustment appraisal v2 valuation worst mid best case flip brrr strategy toggle playbook badge walk-away tests value costs refinance cashflow resilience verdict bar pass warn fail incomplete fragility stress break-even headroom strategy verdict worst-case basis profit target profitPct max bid flip budget split price sdlt legal pack costs refurb holding cost lines null unknown incomplete finance purchase price stamp duty additional property bridge ltv monthly rate arrangement exit fee cash bridging mortgage icr interest coverage retained serviced flip profit money left in cash released refurbishment trades contingency returns rental yield void management maintenance insurance btl remortgage refi progress programme schedule gantt list activities phases secured completion works start practical completion listed sale agreed crew clash contingency winter drying bank holidays holding comparison finance late slow month slow listing winter external bridge term exceeded route auction agent scope toggles timeline holding phases weeks months decision brief buy watch pass risk register score weighted factors crime social housing income population demand liquidity flood school legal pack red flag epc compliance per-deal threshold override",
   },
   {
     id: "playbooks",
@@ -559,13 +559,13 @@ const SECTIONS = [
     id: "flags",
     title: "All flags & indicators quick reference",
     icon: Star,
-    terms: "flags indicators badges proceed caution reject buy watch pass funding gap fits buy box outside buy box no money left in cash released icr epc imd imdd flood areas compliance valid expiring overdue partial no brrr ni",
+    terms: "flags indicators badges proceed caution reject buy watch pass funding gap fits buy box outside buy box no money left in cash released icr epc imd imdd flood areas compliance valid expiring overdue partial no brrr ni programme finance late winter external slow listing month bridge term exceeded gantt schedule practical completion working day",
   },
   {
     id: "glossary",
     title: "Glossary — terms, abbreviations & definitions",
     icon: Library,
-    terms: "glossary terms abbreviations definitions annualised roi arrangement fee ast assured shorthold tenancy break-even headroom bridge loan bridging brrr buy refurbish refinance rent btl buy to let buy box capital base cash in cash released comps comparables completion conveyancing decision brief deposit dscr ea estate agent environment agency eicr electrical epc energy performance certificate exchange exit fee fragility appraisal stress free cash freehold funding gap gas safety cp12 gating question gdv gross development value guide price hammer price hmo house in multiple occupation holding costs hpi house price index icr interest coverage ratio imd index multiple deprivation land registry lbtt ltt leasehold legal pack lsoa ltv loan to value max bid mees money left in net profit open questions pipr playbook prs profit on cost red flag refinance refi retained interest right to rent roi runway sdlt stamp duty section 8 section 21 serviced interest stress rate strategy verdict title register triage verdict vixiv void period walk-away tests worst-case basis",
+    terms: "glossary terms abbreviations definitions annualised roi arrangement fee ast assured shorthold tenancy break-even headroom bridge loan bridging brrr buy refurbish refinance rent btl buy to let buy box capital base cash in cash released comps comparables completion conveyancing decision brief deposit dscr ea estate agent environment agency eicr electrical epc energy performance certificate exchange exit fee fragility appraisal stress free cash freehold funding gap gas safety cp12 gating question gdv gross development value guide price hammer price hmo house in multiple occupation holding costs hpi house price index icr interest coverage ratio imd index multiple deprivation land registry lbtt ltt leasehold legal pack lsoa ltv loan to value max bid mees money left in net profit open questions pipr playbook practical completion programme deal programme schedule gantt phases activities prs profit on cost red flag refinance refi retained interest right to rent roi runway sdlt stamp duty section 8 section 21 serviced interest stress rate strategy verdict title register triage verdict vixiv void period walk-away tests working day worst-case basis",
   },
 ];
 
@@ -829,6 +829,30 @@ function DealDetailContent({ query }) {
 
       <div className="space-y-2">
         <p className="font-semibold text-vx-text border-b border-vx-divider pb-1">Tab 5 — Progress</p>
+
+        <p className="font-medium text-vx-text mt-2">Deal Programme (VIXIV 54-activity schedule)</p>
+        <p className="text-vx-muted text-xs">The top section of the Progress tab generates a full working-day schedule from deal secured to sale completed, following the VIXIV Flip Programme Template (phases A–H, 54 activities). All dates are calculated from your inputs using England & Wales bank holidays and any custom non-working days.</p>
+        <FieldList query={query} items={[
+          ["Route",                    "Auction (28-day completion default) or Agent (exchange-to-completion driven). Controls how the A12 Completion date is calculated."],
+          ["Deal secured",             "The anchor date for the entire programme. For auction deals, use the auction date."],
+          ["Scope toggles",            "Nine work categories (Pre-2000, Structural, Damp/timber, Roof/external, Windows/doors, Rewire, Heating/boiler, Kitchen, Bathroom). Activities are included or skipped based on what's in scope."],
+          ["Contingency %",            "Applied to flagged high-risk activities (roof, structural, damp). Programme default: 15%."],
+          ["Key dates strip",          "Shows 8 headline dates/durations: Completion, Works start, Practical completion, Listed, Sale agreed, Sale completed, Build working days, and Months owned."],
+          ["List view",                "Activities grouped by phase, collapsible. Shows planned dates, duration, and an actual finish date input per activity. HOLD activities highlighted amber. 'Show skipped' toggle reveals not-applicable activities."],
+          ["Gantt view",               "CSS-grid timeline with activity bars per phase, week tick-marks, and a dashed today line. Touch-scrollable on mobile."],
+          ["Actual finish",            "Enter an actual finish date for any completed activity. All successors recalculate from that date."],
+          ["Programme check (Appraisal tab)", "Once a programme exists, the Appraisal tab shows a comparison row: programme-derived holding months vs your manual holding figure. Comparison only — the appraisal verdict always uses your manual figure."],
+        ]} />
+        <p className="font-medium text-vx-text mt-2">Programme flags</p>
+        <FlagTable query={query} rows={[
+          ["Finance late",        "Bridging AIP activity (A11) finishes after the completion date (A12). Finance may not be in place before the legal deadline.",  "A11 completes before A12"],
+          ["Winter external",     "Roof, external, or drainage works fall in November–February. Cold/wet weather delays are likely.",                              "External works scheduled for March–October"],
+          ["Slow listing month",  "The property is listed in August, November, or December — typically slower buyer activity.",                                   "Listing falls in September–July (ex Nov/Dec)"],
+          ["Bridge term exceeded","The programme duration from secured to sale completed exceeds the bridge term entered in the Finance tab.",                   "Programme fits within bridge term"],
+        ]} />
+        <Callout tone="warn">Programme flags appear in the auction bid sheet when they are derived from the auction date — they are indicative warnings, not hard stops.</Callout>
+
+        <p className="font-medium text-vx-text mt-2">Project phases / manual timeline</p>
         <FieldList query={query} items={[
           ["Offer to exchange",       "Conveyancing period. Typically 3–5 weeks."],
           ["Exchange to completion",  "Typically 1–2 weeks."],
@@ -1050,6 +1074,13 @@ function FlagsContent({ query }) {
         ["IMD 1–3/10 (red)",    "Most deprived 30% of LSOAs — potential demand risk",                  "Decile 8–10 for lower exit risk"],
         ["Flood areas: N (amber)","N Environment Agency flood zones within 3km",                        "0 flood areas"],
       ]} />
+      <p className="font-semibold text-vx-text mt-3">Programme flags (Progress tab / auction bid sheet):</p>
+      <FlagTable query={query} rows={[
+        ["Finance late ⚠",       "Bridging AIP (A11) finishes after the completion date — finance may miss the legal deadline",  "A11 clears before completion"],
+        ["Winter external ⚠",    "Roof/external works fall Nov–Feb — cold/wet weather delays likely",                           "External works Mar–Oct"],
+        ["Slow listing month ⚠", "Listed in Aug, Nov, or Dec — slower buyer activity expected",                                 "Listed Sep–Jul (ex Nov/Dec)"],
+        ["Bridge term exceeded ⚠","Programme duration exceeds bridge term entered in Finance tab",                              "Programme within bridge term"],
+      ]} />
       <p className="font-semibold text-vx-text mt-3">Compliance:</p>
       <FlagTable query={query} rows={[
         ["Valid (green)",        "Expiry > 60 days away",                 "All items Valid"],
@@ -1182,6 +1213,8 @@ const GLOSSARY = [
     entries: [
       { term: "PIPR — Private Investor Price Ratio", def: "An ONS-derived affordability measure used in the Area Screener to rank local authority areas by rental demand potential. Higher PIPR indicates stronger relative demand for private rentals." },
       { term: "Playbook", def: "A named set of buy box filters (postcodes, property types, tenures, price ceiling) and financial assumption overrides (LTV, rates, profit thresholds). Create separate playbooks for different strategies — e.g. South-East Flip vs Midlands BRRR." },
+      { term: "Practical completion (PC)", def: "The date when the refurbishment is substantially finished and the contractor hands the property back. Used as the anchor for the sales/marketing phase in the Deal Programme. Activities before PC are build-phase; activities after PC are sales-phase." },
+      { term: "Programme — Deal Programme", def: "A 54-activity working-day schedule built from the VIXIV Flip Programme Template, covering deal secured through to sale completed (phases A–H). Generated automatically in the Progress tab. Dates are calculated using England & Wales bank holidays and any custom non-working days." },
       { term: "PRS — Private Rented Sector", def: "The collective term for privately-owned residential properties let to tenants on open-market rents. Distinct from social housing and build-to-rent." },
       { term: "Profit on cost", def: "Net profit ÷ total cost, expressed as a percentage. DealsDash default minimum is 15%. Falling below this threshold triggers a PASS in the Decision Brief." },
     ],
@@ -1228,6 +1261,7 @@ const GLOSSARY = [
     letter: "W",
     entries: [
       { term: "Walk-away tests", def: "Five structured checks in the Appraisal tab that must all pass before you commit to bidding: (1) Value — enough comparables, no single-point valuation; (2) Costs — no unknown cost lines; (3) Refinance — positive break-even headroom, lender route recorded; (4) Cash flow — net monthly positive, ICR passes; (5) Resilience — deal survives a −10% value / +10% refurb stress. Tests 3 and 4 are skipped for Flip strategies." },
+      { term: "Working day", def: "Monday–Friday excluding England & Wales bank holidays and any custom non-working days you configure. All Deal Programme durations and dates are expressed in working days. The programme fetches the official GOV.UK bank holiday calendar, falling back to a bundled 2026–2028 dataset if offline." },
       { term: "Worst-case basis", def: "The appraisal always uses the worst-case (lowest) valuation as the safe default. Mid and best figures are entered for context but do not affect the verdict unless you explicitly switch the basis. This principle prevents optimistic valuations from inflating the max bid." },
     ],
   },
