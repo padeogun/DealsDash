@@ -53,10 +53,11 @@ Each phase is one prompt file. Run them **in order**, one per Claude Code sessio
 | P06 | `P06_refurb_area_construction.md` | Kerb-appeal benchmarks, £1→£3 check, construction flags from EPC | P02 | Rochdale EPC sample verified |
 | P07 | `P07_sourcing_funnel.md` | Viewing → offer → accept funnel vs target | P02 | Funnel shows month-to-date |
 | P08 | `P08_screen_before_view.md` | *Experimental* comparables-based ranking + backtest gate | P01, P06 | Backtest error within threshold, else feature stays off |
+| P11 | `P11_deal_programme.md` | Deal programme: scheduler + golden dates, List/Gantt in the Progress tab (phone-ready), pipeline crew/capital check, programme-based holding cost beside manual | P01–P10, A1–E | Golden dates match; screenshots at 375 px; rules test passes |
 | P09 | `P09_security_review.md` | Security-review subagent, findings fixed, `SECURITY_LOG.md` | All build phases | No open High findings |
 | P10 | `P10_verify_and_release.md` | Full test run, build, emulator smoke test, release package | P09 | **Your explicit confirmation before zip/deploy** |
 
-**Minimum viable slice:** P00 → P01 → P02 → P03 → P09 → P10. That alone delivers the decision-changing features (worst-case basis, break-even, stress tests, verdict). P04–P08 can follow in any order after P03, with P09/P10 re-run at the end.
+**Minimum viable slice:** P00 → P01 → P02 → P03 → P09 → P10. That alone delivers the decision-changing features (worst-case basis, break-even, stress tests, verdict). P04–P08 can follow in any order after P03, with P09/P10 re-run at the end. P11 (added 16 Oct 2026) runs after the A1–E follow-ups, then P09/P10 are re-run.
 
 ## 5. Golden test cases (must reproduce exactly)
 
@@ -81,6 +82,7 @@ All figures recomputed independently on 9 Oct 2026.
 - Scotland (LBTT) and Wales (LTT) are **not implemented** in v2; the engine must return "unsupported nation — calculate manually" rather than an England figure. (Flag: the national Screener includes Scotland — this is an open item.)
 - No scraping of Rightmove/Zoopla. Listings enter by manual entry or CSV import (e.g. from EIG exports).
 - Deploy only via `.\update-dealsdash.bat`, only after P10 and your explicit confirmation.
+- **Deal Programme (P11):** programme-based holding/finance cost sits **alongside** the manual figure (comparison only, does not drive the verdict); List and Gantt views switchable on any device, Gantt must work on a phone; programmes stored in `deals/{id}/programme/main`.
 
 ## 7. Open items for you (P00 will also ask)
 
@@ -95,6 +97,7 @@ All figures recomputed independently on 9 Oct 2026.
 
 1. Copy this folder into the repo as `docs/appraisal-v2/` (Windows: `C:\Users\paula\Documents\Dev\dealsdash-package\docs\appraisal-v2\`).
 2. Copy `security-reviewer.md` to `.claude/agents/security-reviewer.md` in the repo (P09 also does this if missing).
+   For P11, the reference workbook is at `docs/appraisal-v2/reference/VIXIV_Flip_Programme_Template.xlsx`.
 3. Open a terminal in the repo root and start `claude`.
 4. Run each phase with: `Read @docs/appraisal-v2/P00_audit_and_setup.md and execute it exactly.`
 5. At each gate, review the report, answer questions, then say `Proceed to the next phase` or start a fresh session with the next file.

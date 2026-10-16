@@ -139,7 +139,7 @@ const TEST_LABELS  = { value: "Value", costs: "Costs", refinance: "Refinance", c
  * @param {{ deal, onChange, settings, buyBox }} props
  *   buyBox — the deal's linked Playbook (or null); drives strategy + threshold defaults
  */
-export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null }) {
+export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null, programmeData = null }) {
   const [stressExpanded, setStressExpanded] = useState(false);
   const [overridesOpen, setOverridesOpen] = useState(false);
 
@@ -768,6 +768,31 @@ export default function AppraisalV2Tab({ deal, onChange, settings, buyBox = null
               </span>
           }
         </div>
+
+        {/* Programme check — comparison only, does not drive verdict */}
+        {programmeData?.keyDates && holdingMonthlyRate(v2.holding) != null && (() => {
+          const kd = programmeData.keyDates;
+          const d0 = kd.completion && new Date(kd.completion + "T00:00:00Z");
+          const d1 = kd.saleCompleted && new Date(kd.saleCompleted + "T00:00:00Z");
+          if (!d0 || !d1) return null;
+          const progMonths = Math.max(0, (d1 - d0) / (1000 * 60 * 60 * 24 * 30.4375));
+          const rate = holdingMonthlyRate(v2.holding);
+          const progCost = rate != null ? round2(rate * progMonths) : null;
+          const diff = holdingCost != null && progCost != null ? round2(progCost - holdingCost) : null;
+          return (
+            <div className="mt-3 pt-3 border-t border-vx-divider text-xs text-vx-muted space-y-1">
+              <div className="font-medium text-vx-text">Programme check <span className="font-normal text-vx-muted">— comparison only. Verdict uses the manual figure.</span></div>
+              <div className="flex flex-wrap gap-4 font-mono">
+                <span>Manual: <b className="text-vx-text">{fmtGBP(holdingCost)}</b> ({projMonths} mo)</span>
+                <span>Programme: <b className="text-vx-text">{fmtGBP(progCost)}</b> ({progMonths.toFixed(1)} mo)</span>
+                {diff != null && <span>Difference: <b className={diff > 0 ? "text-vx-caution" : "text-vx-positive"}>{diff >= 0 ? "+" : ""}{fmtGBP(diff)}</b></span>}
+              </div>
+              {programmeData.flags?.bridgeTermExceeded && (
+                <div className="text-vx-negative flex items-center gap-1">⚠ Programme months exceed bridge term</div>
+              )}
+            </div>
+          );
+        })()}
       </A2Card>
 
       {/* ── Other cost lines ─────────────────────────────────────────────── */}

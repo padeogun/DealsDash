@@ -67,6 +67,12 @@ export const briefsColRef     = (db, uid, dealId) => collection(db, "users", uid
 export const briefDocRef      = (db, uid, dealId, briefId) => doc(db, "users", uid, "deals", dealId, "briefs", briefId);
 export const saveBrief        = (db, uid, dealId, brief) => setDoc(briefDocRef(db, uid, dealId, brief.id), brief);
 
+// Programme — single document subcollection under each deal.
+// Path: users/{uid}/deals/{dealId}/programme/main
+// Covered by the existing wildcard rule; the deal document itself is never mutated.
+export const programmeDocRef = (db, uid, dealId) => doc(db, "users", uid, "deals", dealId, "programme", "main");
+export const saveProgramme   = (db, uid, dealId, data) => setDoc(programmeDocRef(db, uid, dealId), data);
+
 // marketStats is a root collection (not per-user) — intentional single-user exception to the
 // subcollection pattern. Written by the refreshMarketStats Cloud Function, read by the client.
 // Do not move under users/{uid}/ without a data migration.

@@ -1,5 +1,39 @@
 # Appraisal v2 — Changelog
 
+## Phase P11 — Deal Programme · 16 October 2026
+
+### Added
+- **`src/lib/programme/`** — pure-JS scheduler module (no React, no Firebase):
+  - `calendar.js` — working-day arithmetic (isWorkday, addWorkdays, networkdays, addCalendarDays, ceilWorkday, monthOf); holidays injected, no date library
+  - `template.js` — 54-activity VIXIV flip programme template (IDs A1–H9, phases A–H), `templateVersion = 1`
+  - `schedule.js` — topological schedule engine: FS/SS dependency resolution, contingency on flagged activities, winter-drying extension (E2), actual-finish overrides, not-applicable pass-through, A12 auction/agent completion special case, lag/dur param overrides
+  - `flags.js` — `computeFlags(result, {bridgeTerm})` derives financeLate, winterExternal, slowMonthListing, bridgeTermExceeded
+  - `pipeline.js` — `checkCrewClash(deals)` (strict overlap) and `capitalOverlapDays(deals)` for multi-deal crew/capital planning
+  - `holding.js` — `programmeHoldingMonths` and `holdingComparison` bridge the programme calendar to the appraisal holding cost line
+  - `bankHolidays.js` — GOV.UK fetch + localStorage 24h cache + bundled England & Wales 2026–2028 fallback; `source` tag shown in UI
+  - `index.js` — single re-export barrel for the module
+- **`src/lib/programme/__tests__/p11.test.js`** — 40 golden tests (Deal 1 auction route, Deal 2 agent route, crew-clash, not-applicable, actuals override, contingency, winter-drying, key dates); all passing
+- **`src/components/ProgrammeView.jsx`** — Progress tab UI:
+  - Inputs panel: route (Segmented), deal-secured date, scope toggles (9 categories, 44px touch targets), 7 numeric assumption fields
+  - Key dates card: 8-stat grid (completion, worksStart, pc, listed, saleAgreed, saleCompleted, build WDs, months owned) + flags row
+  - List view: grouped by phase, collapsible, actual-date input per activity, "Show skipped" toggle, HOLD activities highlighted amber
+  - Gantt view: CSS-grid, zero bundle delta, sticky label column, week ticks, today line, activity bars with per-phase colour, milestone circles
+  - Firestore: onSnapshot subscribe to `users/{uid}/deals/{dealId}/programme/main`; debounced 800ms auto-save
+  - Bank holidays: async fetch on mount with fallback; `source` tag shown when fallback is in use
+- **`src/data/repo.js`** — `programmeDocRef` and `saveProgramme` for the new subcollection
+- **`src/App.jsx`** — ProgrammeView wired into the Progress tab; `programmeData` state passed to AppraisalV2Tab
+- **`src/components/AppraisalV2Tab.jsx`** — Programme check row in the holding cost section (comparison only, never drives verdict); bridge-term warning if `bridgeTermExceeded`
+- **`src/components/AuctionAssessmentV2.jsx`** — Programme warnings block in bid sheet: finance-late, winter-external, slow-listing-month flags derived from lead's auction date and scope using bundled fallback holidays (synchronous)
+
+### Architecture decisions
+- Gantt: CSS-grid (option b chosen) — zero bundle delta over canvas/SVG/D3 approaches
+- Firestore path: `users/{uid}/deals/{dealId}/programme/main` — covered by existing wildcard rule `{document=**}`; no rule changes needed
+- Bank holiday fetch: fixed GOV.UK URL only; schema-validated before cache; user input never injected into the URL
+- `db` passed as prop to ProgrammeView (not imported directly) — keeps the module testable without Firebase
+- AuctionAssessmentV2 uses `FALLBACK_HOLIDAYS` synchronously (no async) — avoids async state in the bid sheet; flags are indicative, not authoritative
+
+---
+
 ## Phase E follow-up — User Guide update · 12 October 2026
 
 Updated `src/components/UserGuideView.jsx` to reflect the 7-tab deal structure introduced in Phase A2.

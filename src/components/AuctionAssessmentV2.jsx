@@ -15,6 +15,9 @@ import {
   mapLegalPackCostLines, auctionFlipWalkAway,
 } from "../lib/appraisal/index.js";
 import { round2 } from "../lib/utils.js";
+import { schedule } from "../lib/programme/schedule.js";
+import { TEMPLATE } from "../lib/programme/template.js";
+import { FALLBACK_HOLIDAYS } from "../lib/programme/bankHolidays.js";
 
 // ── Formatting ────────────────────────────────────────────────────────────────
 const fmtGBP  = (n) => n == null ? "—" : "£" + Math.round(n).toLocaleString("en-GB");
@@ -135,6 +138,24 @@ export default function AuctionAssessmentV2({ lead, onChange }) {
 
     return { endValue, hasNullLines, totalCosts, refurbAmt, legalsAmt, budgetResult, split, sdltInfo, breakEvenSale, targetSale, targetProfit, walkResult, compCount };
   }, [valuation, allCostLines, profitPct, aipRecorded, lead.comparables]);
+
+  // Derive programme flags from auctionDate (sync, uses bundled fallback holidays).
+  // Route is always 'auction' for auction leads; scope from auctionV2 if set.
+  const progFlags = useMemo(() => {
+    const secured = lead.auctionDate || "";
+    if (!secured) return null;
+    const inputs = {
+      route: "auction",
+      dealSecured: secured,
+      contingencyPct: 0.15,
+      winterDryingExtra: 3,
+      auctionCompletionDays: 28,
+      scope: auctionV2.scope || {},
+    };
+    const result = schedule(TEMPLATE, inputs, FALLBACK_HOLIDAYS, {});
+    if (result.status !== "complete") return null;
+    return result.flags;
+  }, [lead.auctionDate, auctionV2.scope]);
 
   const verdict     = computed.walkResult?.verdict || "pass";
   const isFail      = verdict === "fail";
@@ -430,6 +451,31 @@ export default function AuctionAssessmentV2({ lead, onChange }) {
                 </div>
               ) : null;
             })()}
+
+            {/* Programme flags derived from auction date */}
+            {progFlags && (progFlags.financeLate || progFlags.winterExternal || progFlags.slowMonthListing) && (
+              <div className="pt-2 border-t border-vx-divider space-y-1">
+                <div className="text-xs text-vx-muted font-medium mb-1">Programme warnings</div>
+                {progFlags.financeLate && (
+                  <div className="text-xs flex items-start gap-1.5 text-vx-negative">
+                    <span>⚠</span>
+                    <span>Finance late — bridging AIP may not be in place before 28-day completion deadline</span>
+                  </div>
+                )}
+                {progFlags.winterExternal && (
+                  <div className="text-xs flex items-start gap-1.5 text-vx-caution">
+                    <span>⚠</span>
+                    <span>Winter external works — programme may be extended by cold/wet weather delays</span>
+                  </div>
+                )}
+                {progFlags.slowMonthListing && (
+                  <div className="text-xs flex items-start gap-1.5 text-vx-caution">
+                    <span>⚠</span>
+                    <span>Slow listing month (Aug / Nov / Dec) — expected sale period may be longer than average</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {lead.auctionHouse && (
               <div className="text-xs text-vx-muted pt-2 border-t border-vx-divider">

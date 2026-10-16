@@ -39,6 +39,7 @@ import ScreenerView from "./components/ScreenerView.jsx";
 import UserGuideView from "./components/UserGuideView.jsx";
 import AppraisalV2Tab from "./components/AppraisalV2Tab.jsx";
 import AuctionAssessmentV2 from "./components/AuctionAssessmentV2.jsx";
+import ProgrammeView from "./components/ProgrammeView.jsx";
 import { recycling, capitalCost } from "./lib/appraisal/capital.js";
 import { calcFunnelMonth, calcFunnelRolling, sortStandingOffers, calcPaceIndicator, isFollowUpDue } from "./lib/appraisal/funnel.js";
 
@@ -1494,6 +1495,7 @@ function _AttributionFooter() {
 function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultBuyBox, buyBox = null, settings, onMoveToRental, alreadyLinkedProperty, ownerUid, surveyRates, onSurveyRatesChange, marketStats }) {
   const [subTab, setSubTab] = useState(DEAL_TABS[0]);
   const [sim, setSim] = useState(null); // simulation overlay, transient
+  const [programmeData, setProgrammeData] = useState(null); // { keyDates, flags } from ProgrammeView
   const [hpiLoading, setHpiLoading] = useState(false);
   const [hpiError, setHpiError] = useState(null);
   const [hpiData, setHpiData] = useState(null);
@@ -1835,26 +1837,36 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
       )}
 
       {subTab === "Progress" && (
-        <Card className="space-y-3">
-          <SectionTitle>Project phases</SectionTitle>
-          <div className="space-y-2">
-            {deal.phases.map((p, i) => (
-              <div key={i} className="grid grid-cols-3 gap-2 items-end">
-                <TextField label={i === 0 ? "Phase" : ""} value={p.name} onChange={(v) => setNested("phases", i, "name", v)} />
-                <NumField label={i === 0 ? "Weeks" : ""} value={p.weeks} onChange={(v) => setNested("phases", i, "weeks", v)} prefix="" />
-              </div>
-            ))}
-          </div>
-          <div className="text-sm font-mono bg-vx-surface rounded px-3 py-2 inline-block">Total: <b>{base.timeline.weeks} weeks ≈ {base.timeline.months} months</b></div>
-          <SectionTitle>Holding costs (£/month)</SectionTitle>
-          <div className="grid md:grid-cols-4 gap-3">
-            <NumField label="Council tax (empty/void)" value={deal.holdingBreakdown.ctax} onChange={(v) => setObj("holdingBreakdown", "ctax", v)} />
-            <NumField label="Insurance" value={deal.holdingBreakdown.insurance} onChange={(v) => setObj("holdingBreakdown", "insurance", v)} />
-            <NumField label="Utilities" value={deal.holdingBreakdown.utilities} onChange={(v) => setObj("holdingBreakdown", "utilities", v)} />
-            <NumField label="Other" value={deal.holdingBreakdown.other} onChange={(v) => setObj("holdingBreakdown", "other", v)} />
-          </div>
-          <div className="text-sm font-mono bg-vx-surface rounded px-3 py-2 inline-block">Total holding cost (excl. bridge): <b>{fmtGBP(base.holding.exBridge)}</b> · incl. bridge: <b>{fmtGBP(base.holding.total)}</b></div>
-        </Card>
+        <div className="space-y-4">
+          {/* Programme section — key dates, list and Gantt views */}
+          <ProgrammeView
+            deal={deal}
+            ownerUid={ownerUid}
+            db={db}
+            onProgrammeReady={setProgrammeData}
+          />
+          {/* Existing project phases & holding costs — unchanged */}
+          <Card className="space-y-3">
+            <SectionTitle>Project phases (manual timeline)</SectionTitle>
+            <div className="space-y-2">
+              {deal.phases.map((p, i) => (
+                <div key={i} className="grid grid-cols-3 gap-2 items-end">
+                  <TextField label={i === 0 ? "Phase" : ""} value={p.name} onChange={(v) => setNested("phases", i, "name", v)} />
+                  <NumField label={i === 0 ? "Weeks" : ""} value={p.weeks} onChange={(v) => setNested("phases", i, "weeks", v)} prefix="" />
+                </div>
+              ))}
+            </div>
+            <div className="text-sm font-mono bg-vx-surface rounded px-3 py-2 inline-block">Total: <b>{base.timeline.weeks} weeks ≈ {base.timeline.months} months</b></div>
+            <SectionTitle>Holding costs (£/month)</SectionTitle>
+            <div className="grid md:grid-cols-4 gap-3">
+              <NumField label="Council tax (empty/void)" value={deal.holdingBreakdown.ctax} onChange={(v) => setObj("holdingBreakdown", "ctax", v)} />
+              <NumField label="Insurance" value={deal.holdingBreakdown.insurance} onChange={(v) => setObj("holdingBreakdown", "insurance", v)} />
+              <NumField label="Utilities" value={deal.holdingBreakdown.utilities} onChange={(v) => setObj("holdingBreakdown", "utilities", v)} />
+              <NumField label="Other" value={deal.holdingBreakdown.other} onChange={(v) => setObj("holdingBreakdown", "other", v)} />
+            </div>
+            <div className="text-sm font-mono bg-vx-surface rounded px-3 py-2 inline-block">Total holding cost (excl. bridge): <b>{fmtGBP(base.holding.exBridge)}</b> · incl. bridge: <b>{fmtGBP(base.holding.total)}</b></div>
+          </Card>
+        </div>
       )}
 
       {subTab === "Returns" && (
@@ -2011,7 +2023,7 @@ function DealDetailView({ deal, onChange, onDelete, onBack, thresholds, defaultB
       )}
 
       {subTab === "Appraisal" && (
-        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} buyBox={buyBox} />
+        <AppraisalV2Tab deal={deal} onChange={onChange} settings={settings} buyBox={buyBox} programmeData={programmeData} />
       )}
 
       <Card>

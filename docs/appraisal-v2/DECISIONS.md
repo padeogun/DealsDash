@@ -29,6 +29,21 @@ All thresholds (profitPct, acceptedLeftIn, ICR, minNetMonthly, headroom, reserve
 
 ---
 
+## P11 decisions — Deal Programme · 16 October 2026
+
+| # | Decision | Chosen option | Rationale |
+|---|---|---|---|
+| P11-1 | Gantt implementation | CSS-grid (option b) | Zero bundle delta; no new dependency; touch-scroll inherits from browser; renders at same speed as list view |
+| P11-2 | Bank holiday data source | GOV.UK `/bank-holidays.json` + 24h localStorage cache + bundled 2026–2028 fallback | Single authoritative UK government source; offline-safe; FALLBACK covers the foreseeable project horizon |
+| P11-3 | `db` prop vs module import | Prop injection in ProgrammeView | Keeps the module testable without a live Firebase instance |
+| P11-4 | AuctionAssessmentV2 flag source | FALLBACK_HOLIDAYS (synchronous, bundled) | Avoids async state inside the bid sheet; flags are indicative warnings, not scheduling artifacts that require live data |
+| P11-5 | Programme verdict influence | Comparison only — never drives appraisal verdict | Spec mandates this; avoids circular dependency between the programme (which may be incomplete) and the deal appraisal |
+| P11-6 | Firestore path for programme | `users/{uid}/deals/{dealId}/programme/main` | Consistent with `briefs` subcollection pattern; existing wildcard rule already covers it; deal document itself is never mutated |
+| P11-7 | Calendar arithmetic library | None — hand-rolled ISO string arithmetic | Zero bundle impact; avoids date-library timezone edge cases; all dates are UTC midnight YYYY-MM-DD strings |
+| P11-8 | Crew clash definition | Strict overlap: `a.worksStart < b.pc && a.pc > b.worksStart` (equality = no clash) | Equality means one deal finishes the day another starts — no simultaneous crew requirement |
+
+---
+
 ## Standing decisions (from README §6 — do not re-open)
 
 - Worst-case value is the **default appraisal basis**.
