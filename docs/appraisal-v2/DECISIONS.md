@@ -44,6 +44,17 @@ All thresholds (profitPct, acceptedLeftIn, ICR, minNetMonthly, headroom, reserve
 
 ---
 
+## External materials decisions · 17 October 2026
+
+| # | Decision | Chosen option | Rationale |
+|---|---|---|---|
+| EXT-1 | Single source of truth for strategy claims | `docs/strategy/VIXIV_STRATEGY_SUMMARY.md` | Prevents restatement of incorrect track-record, market-data, or cash-per-deal figures in external documents |
+| EXT-2 | Illustrative figures in external materials | Every unverified figure must carry the label *"Illustrative — training example (Progressive Property Academy, Oct 2026)"* | VIXIV has no completed transactions; presenting training examples as track record is misleading |
+| EXT-3 | Business Planner defaults (avgCashPerDeal, avgNetProfitPerDeal) | Treat as slider start points only; planning should use §5 figures from VIXIV_STRATEGY_SUMMARY.md | Defaults (£30k / £20k) are below the training-case minimum of £47,450 on completion day |
+| EXT-4 | Screener mock data | Bradford/Rochdale/Burnley data in ScreenerMockup SVG is illustrative only; not sourced from live data | To be labelled "Sample data — illustrative only" in P12 |
+
+---
+
 ## Standing decisions (from README §6 — do not re-open)
 
 - Worst-case value is the **default appraisal basis**.

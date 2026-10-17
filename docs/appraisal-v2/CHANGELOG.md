@@ -1,5 +1,17 @@
 # Appraisal v2 — Changelog
 
+## Strategy summary corrected · 17 October 2026
+
+Created `docs/strategy/VIXIV_STRATEGY_SUMMARY.md` as the single source of truth for external materials. Three claims in the prior conversational strategy reflection were corrected:
+
+1. **Track record** — VIXIV has no completed transactions as at October 2026. The golden-case figures (£110,800, £200,000, £63,350) are Progressive Property Academy training illustrations, not VIXIV deal results.
+2. **Market data** — the Bradford/Rochdale/Burnley scores, yields, and prices in the User Guide screener preview are illustrative examples created for the mockup, not live-sourced Land Registry or verified research data.
+3. **Cash per deal** — the Business Planner default of £30,000 (`avgCashPerDeal`) is below the training golden-case minimum of **£47,450 on completion day** (Scenario A/B). The correct planning range is £47,450–£77,450 depending on refurb finance route. The `avgNetProfitPerDeal` default of £20,000 is also below the golden-case target of £27,000 (15% × £180k GDV).
+
+No code changes; no deploy. Two P12 open items added: update Business Planner defaults; label ScreenerMockup SVG as sample data.
+
+---
+
 ## Phase P10 — Verify and Release · 16 October 2026
 
 ### Release summary — what's new for Paul
