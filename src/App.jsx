@@ -621,7 +621,7 @@ function NumField({ label, value, onChange, prefix = "£", step = 1, min = 0, te
           data-testid={testId}
           type="number" step={step} min={min} value={value} disabled={disabled}
           onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
-          className="w-full py-1.5 pr-2 text-sm font-mono outline-none tabular-nums"
+          className={`w-full py-1.5 pr-2 text-sm font-mono outline-none tabular-nums${!prefix ? " pl-2" : ""}`}
         />
       </div>
     </label>
