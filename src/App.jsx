@@ -2510,7 +2510,7 @@ function SettingsView({ settings, onSettingsChange }) {
       <Card>
         <SectionTitle>Sourcing</SectionTitle>
         <div className="max-w-xs mt-2">
-          <NumField label="Monthly viewing target" value={appr.viewingTargetPerMonth ?? 20} onChange={(v) => setAppr({ viewingTargetPerMonth: v })} />
+          <NumField label="Monthly viewing target" value={appr.viewingTargetPerMonth ?? 20} onChange={(v) => setAppr({ viewingTargetPerMonth: v })} prefix="" />
         </div>
       </Card>
 
